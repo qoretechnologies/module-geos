@@ -51,10 +51,10 @@
 
     | GEOS Type | Qore Type |
     |-----------|-----------|
-    | Coordinate | @ref Qore::GEOS::GEOSCoordinate "hash<GEOSCoordinate>" |
+    | Coordinate | \c hash<GEOSCoordinate> |
     | Geometry | @ref Qore::GEOS::GEOSGeometry "GEOSGeometry" |
-    | WKT string | @ref string_type "string" |
-    | WKB data | @ref binary_type "binary" |
+    | WKT string | \c string |
+    | WKB data | \c binary |
 
     @section geosexamples Examples
 
@@ -94,7 +94,7 @@ list<auto> results = tree.query(parse_wkt("POLYGON ((0 0, 5 0, 5 5, 0 5, 0 0))")
 # results contains "A" and "B"
     @endcode
 
-    @par Read geometry from a WKT file using the @ref geosdataproviderintro "GEOSDataProvider" module:
+    @par Read geometry from a WKT file using the GEOSDataProvider module:
     @code{.py}
 %modern
 %requires GEOSDataProvider
