@@ -103,7 +103,7 @@ if(DOXYGEN_FOUND)
     # (copy + append, NOT configure_file with user module template which has wrong INPUT)
     file(COPY_FILE ${CMAKE_BINARY_DIR}/Doxyfile ${CMAKE_BINARY_DIR}/Doxyfile.final)
     file(APPEND ${CMAKE_BINARY_DIR}/Doxyfile.final
-        "\n# Final pass: enable user module cross-references and re-enable doc error warnings\nTAGFILES = ${CMAKE_BINARY_DIR}/GEOSDataProvider.tag=../GEOSDataProvider/html\nWARN_IF_DOC_ERROR = YES\n")
+        "\n# Final pass: enable user module cross-references and re-enable doc error warnings\nTAGFILES = ${CMAKE_BINARY_DIR}/GEOSDataProvider.tag=../../GEOSDataProvider/html\nWARN_IF_DOC_ERROR = YES\n")
 
     add_custom_target(docs-module-final
         COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile.final
