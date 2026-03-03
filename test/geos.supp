@@ -1,0 +1,17 @@
+# Valgrind suppressions for known GEOS library issues
+# These are uninitialized value reads inside libgeos_c's STRtree
+# nearest-neighbor implementation - not bugs in our module code.
+
+{
+   geos-strtree-nearest-uninit-1
+   Memcheck:Cond
+   ...
+   obj:*/libgeos_c.so*
+   fun:GEOSSTRtree_nearest_generic_r
+}
+
+{
+   geos-strtree-nearest-uninit-2
+   Memcheck:Cond
+   fun:GEOSSTRtree_nearest_generic_r
+}

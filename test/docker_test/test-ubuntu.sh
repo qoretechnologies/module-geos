@@ -52,5 +52,5 @@ done
 
 # run valgrind
 for test in test/*.qtest; do
-    gosu qore:qore valgrind --error-exitcode=1 --leak-check=full qore -b --enable-debug $test -vv
+    gosu qore:qore valgrind --error-exitcode=1 --leak-check=full --suppressions=${MODULE_SRC_DIR}/test/geos.supp qore -b --enable-debug $test -vv
 done
