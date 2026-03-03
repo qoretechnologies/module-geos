@@ -27,7 +27,7 @@ export MAKE_JOBS=4
 
 # install GEOS development library
 apt-get update
-apt-get install -y libgeos-dev
+apt-get install -y libgeos-dev valgrind
 
 # build module and install
 echo && echo "-- building module --"
