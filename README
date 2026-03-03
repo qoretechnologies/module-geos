@@ -26,6 +26,16 @@ Standalone functions:
     - parse_wkt() / make_wkt(): Convenience WKT parsing/serialization
     - parse_wkb() / make_wkb(): Convenience WKB parsing/serialization
 
+Data provider module (GEOSDataProvider):
+    The GEOSDataProvider separated module provides DataProvider API integration
+    for reading and writing geometry data in WKT and WKB formats:
+    - GEOSWktReadDataProvider: Read WKT geometries (one per line)
+    - GEOSWktWriteDataProvider: Write WKT geometries (one per line)
+    - GEOSWkbReadDataProvider: Read WKB geometries (hex or length-prefixed binary)
+    - GEOSWkbWriteDataProvider: Write WKB geometries (hex or length-prefixed binary)
+
+    Factories: geoswktread, geoswktwrite, geoswkbread, geoswkbwrite
+
 See the generated documentation for more detailed information.
 
 

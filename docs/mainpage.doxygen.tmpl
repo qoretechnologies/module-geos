@@ -18,6 +18,12 @@
 
     The underlying geometry functionality is provided by <a href="https://libgeos.org">GEOS (libgeos)</a>.
 
+    The module has two layers:
+    - <b>C++ binary module</b> (\c geos): GEOSGeometry, GEOSPreparedGeometry, GEOSSTRtree, and
+      WKT/WKB reader/writer classes for in-memory geometry operations
+    - <b>@ref geosdataproviderintro "GEOSDataProvider"</b>: data provider integration for reading and
+      writing WKT/WKB geometry files in data pipelines (load with \c %%requires \c GEOSDataProvider)
+
     @section geosclasses Classes
 
     The following classes are provided:
@@ -88,6 +94,50 @@ list<auto> results = tree.query(parse_wkt("POLYGON ((0 0, 5 0, 5 5, 0 5, 0 0))")
 # results contains "A" and "B"
     @endcode
 
+    @par Read geometry from a WKT file using the @ref geosdataproviderintro "GEOSDataProvider" module:
+    @code{.py}
+%modern
+%requires GEOSDataProvider
+
+# Read WKT file (one geometry per line)
+GEOSWktReadDataProvider provider({"path": "shapes.wkt"});
+map printf("%s: %s\n", $1.type, $1.geometry), provider.searchRecords();
+
+# Write geometries to a WKB hex file
+GEOSWkbWriteDataProvider writer({"path": "output.wkb"});
+writer.createRecord({"geometry": "POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))"});
+    @endcode
+
+    See the @ref geosdataproviderintro "GEOSDataProvider module documentation" for more examples.
+
+    @section geosbuilding Building
+
+    The geos module requires the GEOS library with C API headers to build.
+
+    @subsection geosbuildreqs Build Requirements
+
+    | Distribution | Packages |
+    |-------------|----------|
+    | Ubuntu / Debian | \c libgeos-dev |
+    | Fedora / RHEL | \c geos-devel |
+    | Alpine | \c geos-dev |
+
+    @subsection geosbuildsteps Build Steps
+
+    @code{.sh}
+    mkdir build
+    cd build
+    cmake ..
+    make
+    make install
+    make test
+    @endcode
+
+    If Qore or GEOS cannot be found automatically:
+    @code{.sh}
+    cmake .. -DQORE_DIR=/path/to/qore -DGEOS_DIR=/path/to/geos
+    @endcode
+
     @section geosreleasenotes Release Notes
 
     @subsection geos_1_0 geos Module Version 1.0
@@ -101,4 +151,6 @@ list<auto> results = tree.query(parse_wkt("POLYGON ((0 0, 5 0, 5 5, 0 5, 0 0))")
     - Hashdecls: GEOSCoordinate, GEOSVersionInfo
     - Thread-safe implementation using reentrant GEOS C API
     - Cooperative cancellation support in STRtree queries
+    - @ref geosdataproviderintro "GEOSDataProvider" separated module with WKT and WKB data providers
+      for use in data pipelines
 */

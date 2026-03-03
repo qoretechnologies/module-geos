@@ -1,0 +1,328 @@
+# -*- mode: qore; indent-tabs-mode: nil -*-
+#! Qore GEOSDataProvider module definition
+
+/*  GEOSDataProvider.qm Copyright 2026 Qore Technologies, s.r.o.
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+
+%requires qore >= 2.0
+
+%requires(reexport) DataProvider
+%requires(reexport) FileLocationHandler
+%requires geos
+
+%modern
+
+module GEOSDataProvider {
+    version = "1.0";
+    desc = "user module providing GEOS geometry data provider integration for reading and writing WKT/WKB data";
+    author = "David Nichols <david@qore.org>";
+    url = "https://qore.org";
+    license = "MIT";
+    init = \Priv::priv_init();
+}
+
+/** @mainpage GEOSDataProvider Module
+
+    @tableofcontents
+
+    @section geosdataproviderintro Introduction to the GEOSDataProvider Module
+
+    The %GEOSDataProvider module provides data provider support for reading and writing geometry data in WKT
+    (Well-Known Text) and WKB (Well-Known Binary) formats using the GEOS library.
+
+    Features:
+    - Stream-based WKT reading and writing (one geometry per line)
+    - Stream-based WKB reading and writing (hex-per-line or length-prefixed binary)
+    - Memory-efficient streaming - processes one geometry at a time
+    - Support for file paths, streams, and inline data
+    - Integration with the Qore DataProvider API for use in data pipelines
+
+    The following data providers are provided by this module:
+    - @ref GEOSDataProvider::GEOSWktReadDataProvider "GEOSWktReadDataProvider" - reads WKT geometry data
+    - @ref GEOSDataProvider::GEOSWktWriteDataProvider "GEOSWktWriteDataProvider" - writes WKT geometry data
+    - @ref GEOSDataProvider::GEOSWkbReadDataProvider "GEOSWkbReadDataProvider" - reads WKB geometry data
+    - @ref GEOSDataProvider::GEOSWkbWriteDataProvider "GEOSWkbWriteDataProvider" - writes WKB geometry data
+
+    @section geosdataproviderexamples Examples
+
+    @subsection geosdataprovider_wkt_read_example Reading WKT Geometry Files
+
+    @par Read geometries from a WKT file (one geometry per line):
+    @code{.py}
+%modern
+%requires GEOSDataProvider
+
+# Read from a file
+GEOSWktReadDataProvider provider({"path": "shapes.wkt"});
+AbstractDataProviderRecordIterator i = provider.searchRecords();
+map printf("line %d: %s (%s)\n", $1.line_number, $1.geometry, $1.type), i;
+    @endcode
+
+    @par Read WKT from inline string data:
+    @code{.py}
+string wkt_data = "POINT (1 2)
+LINESTRING (0 0, 1 1, 2 2)
+POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))";
+
+GEOSWktReadDataProvider provider({"data": wkt_data});
+AbstractDataProviderRecordIterator i = provider.searchRecords();
+while (i.next()) {
+    hash<auto> rec = i.getValue();
+    printf("Type: %s, WKT: %s\n", rec.type, rec.geometry);
+}
+    @endcode
+
+    @subsection geosdataprovider_wkt_write_example Writing WKT Geometry Files
+
+    @par Write geometries to a WKT file:
+    @code{.py}
+%modern
+%requires GEOSDataProvider
+
+GEOSWktWriteDataProvider provider({"path": "output.wkt"});
+provider.createRecord({"geometry": "POINT (1 2)"});
+provider.createRecord({"geometry": "LINESTRING (0 0, 5 5, 10 0)"});
+provider.createRecord({"geometry": "POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))"});
+    @endcode
+
+    @subsection geosdataprovider_wkb_example WKB Read and Write
+
+    @par Write WKB hex data and read it back:
+    @code{.py}
+%modern
+%requires GEOSDataProvider
+%requires geos
+
+# Write WKB hex file
+GEOSWkbWriteDataProvider writer({"path": "output.wkb", "format": "hex"});
+# Accepts binary WKB data
+writer.createRecord({"geometry": make_wkb(parse_wkt("POINT (1 2)"))});
+# Also accepts WKT strings (auto-converts to WKB)
+writer.createRecord({"geometry": "LINESTRING (0 0, 5 5, 10 0)"});
+
+# Read WKB hex file
+GEOSWkbReadDataProvider reader({"path": "output.wkb", "format": "hex"});
+AbstractDataProviderRecordIterator i = reader.searchRecords();
+map printf("record %d: %s (WKT: %s)\n", $1.record_number, $1.type, $1.wkt), i;
+    @endcode
+
+    @par Use binary length-prefixed format:
+    @code{.py}
+# Write binary format (4-byte big-endian length prefix + raw WKB)
+GEOSWkbWriteDataProvider writer({"path": "output.wkb", "format": "binary"});
+writer.createRecord({"geometry": "POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))"});
+
+# Read binary format
+GEOSWkbReadDataProvider reader({"path": "output.wkb", "format": "binary"});
+map printf("%s: %s\n", $1.type, $1.wkt), reader.searchRecords();
+    @endcode
+
+    @subsection geosdataprovider_pipeline_example Data Pipeline: WKT to WKB Conversion
+
+    @par Convert a WKT file to WKB format in a streaming pipeline:
+    @code{.py}
+%modern
+%requires GEOSDataProvider
+%requires geos
+
+# Read WKT and write WKB
+GEOSWktReadDataProvider wkt_reader({"path": "input.wkt"});
+GEOSWkbWriteDataProvider wkb_writer({"path": "output.wkb", "format": "hex"});
+
+AbstractDataProviderRecordIterator i = wkt_reader.searchRecords();
+while (i.next()) {
+    hash<auto> rec = i.getValue();
+    wkb_writer.createRecord({"geometry": rec.geometry});
+}
+    @endcode
+
+    @subsection geosdataprovider_factory_example Using Data Provider Factories
+
+    @par Create data providers via the factory API:
+    @code{.py}
+%modern
+%requires GEOSDataProvider
+
+# Get the factory by name
+AbstractDataProviderFactory factory = DataProvider::getFactory("geoswktread");
+
+# Create a read provider
+AbstractDataProvider provider = factory.create({"path": "shapes.wkt"});
+map printf("%s\n", $1.geometry), provider.searchRecords();
+
+# Available factory names:
+#   geoswktread  - read WKT files
+#   geoswktwrite - write WKT files
+#   geoswkbread  - read WKB files
+#   geoswkbwrite - write WKB files
+    @endcode
+
+    @subsection geosdataprovider_stream_example Using Streams Directly
+
+    @par Read from and write to in-memory streams:
+    @code{.py}
+%modern
+%requires GEOSDataProvider
+
+# Write WKT to a string stream
+StringOutputStream sos();
+GEOSWktWriteDataProvider writer({"stream": sos});
+writer.createRecord({"geometry": "POINT (1 2)"});
+writer.createRecord({"geometry": "POINT (3 4)"});
+string wkt_output = sos.getData();
+# wkt_output = "POINT (1 2)\nPOINT (3 4)\n"
+
+# Read WKT from a string stream
+GEOSWktReadDataProvider reader({"data": wkt_output});
+map printf("geometry: %s\n", $1.geometry), reader.searchRecords();
+    @endcode
+
+    @section geosdataprovider_relnotes Release Notes
+
+    @subsection geosdataprovider_v1_0 GEOSDataProvider v1.0
+    - initial release of the module
+*/
+
+#! Contains all public definitions in the GEOSDataProvider module
+public namespace GEOSDataProvider {
+    #! Default encoding for GEOS data
+    public const DefaultEncoding = "UTF-8";
+
+    #! GEOS application name
+    public const AppName = "GEOS";
+
+    #! GEOS logo loaded from file
+    public const GEOSLogo = File::readTextFile(get_script_dir() + "/geos-logo.svg");
+}
+
+# private namespace for the module
+namespace Priv {
+    sub priv_init() {
+        # register the data provider factories
+        DataProvider::registerFactory(new GEOSWktReadDataProviderFactory());
+        DataProvider::registerFactory(new GEOSWktWriteDataProviderFactory());
+        DataProvider::registerFactory(new GEOSWkbReadDataProviderFactory());
+        DataProvider::registerFactory(new GEOSWkbWriteDataProviderFactory());
+
+        # register the data provider application
+        DataProviderActionCatalog::registerApp(<DataProviderAppInfo>{
+            "name": GEOSDataProvider::AppName,
+            "display_name": "GEOS Geometry",
+            "short_desc": "Read and write GEOS geometry data in WKT/WKB formats",
+            "desc": "Read and write GEOS geometry data in WKT (Well-Known Text) and WKB (Well-Known Binary) "
+                "formats for use in GIS data pipelines",
+            "logo": GEOSDataProvider::GEOSLogo,
+            "logo_file_name": "geos-logo.svg",
+            "logo_mime_type": MimeTypeSvg,
+            "groups": (DataProvider::AppGroup::DataTransformation,),
+        });
+
+        # register supported actions
+        DataProviderActionCatalog::registerAction(<DataProviderActionInfo>{
+            "app": GEOSDataProvider::AppName,
+            "path": "/",
+            "action": "read-wkt",
+            "subtype": "geoswktread",
+            "display_name": "Read WKT File",
+            "short_desc": "Read WKT geometry data from a file",
+            "desc": "Read WKT geometry data from a file location",
+            "action_code": DPAT_FIND,
+            "cls": "GEOSDataProvider::GEOSWktReadDataProvider",
+            "options": DataProviderActionCatalog::getActionOptionFromFields(
+                GEOSWktReadDataProvider::ConstructorOptions{"path",}, {
+                    "preselected": True,
+                    "required": True,
+                    "loc": "constructor",
+                }
+            ) + DataProviderActionCatalog::getActionOptionFromFields(
+                GEOSWktReadDataProvider::ConstructorOptions - ("path", "data", "stream"), {
+                    "loc": "constructor",
+                }
+            ),
+        });
+        DataProviderActionCatalog::registerAction(<DataProviderActionInfo>{
+            "app": GEOSDataProvider::AppName,
+            "path": "/",
+            "action": "write-wkt",
+            "subtype": "geoswktwrite",
+            "display_name": "Write WKT File",
+            "short_desc": "Write WKT geometry data to a file",
+            "desc": "Write WKT geometry data to a file location",
+            "action_code": DPAT_CREATE,
+            "cls": "GEOSDataProvider::GEOSWktWriteDataProvider",
+            "options": DataProviderActionCatalog::getActionOptionFromFields(
+                GEOSWktWriteDataProvider::ConstructorOptions{"path",}, {
+                    "preselected": True,
+                    "required": True,
+                    "loc": "constructor",
+                }
+            ) + DataProviderActionCatalog::getActionOptionFromFields(
+                GEOSWktWriteDataProvider::ConstructorOptions - ("path", "stream"), {
+                    "loc": "constructor",
+                }
+            ),
+        });
+        DataProviderActionCatalog::registerAction(<DataProviderActionInfo>{
+            "app": GEOSDataProvider::AppName,
+            "path": "/",
+            "action": "read-wkb",
+            "subtype": "geoswkbread",
+            "display_name": "Read WKB File",
+            "short_desc": "Read WKB geometry data from a file",
+            "desc": "Read WKB geometry data from a file location",
+            "action_code": DPAT_FIND,
+            "cls": "GEOSDataProvider::GEOSWkbReadDataProvider",
+            "options": DataProviderActionCatalog::getActionOptionFromFields(
+                GEOSWkbReadDataProvider::ConstructorOptions{"path",}, {
+                    "preselected": True,
+                    "required": True,
+                    "loc": "constructor",
+                }
+            ) + DataProviderActionCatalog::getActionOptionFromFields(
+                GEOSWkbReadDataProvider::ConstructorOptions - ("path", "data", "stream"), {
+                    "loc": "constructor",
+                }
+            ),
+        });
+        DataProviderActionCatalog::registerAction(<DataProviderActionInfo>{
+            "app": GEOSDataProvider::AppName,
+            "path": "/",
+            "action": "write-wkb",
+            "subtype": "geoswkbwrite",
+            "display_name": "Write WKB File",
+            "short_desc": "Write WKB geometry data to a file",
+            "desc": "Write WKB geometry data to a file location",
+            "action_code": DPAT_CREATE,
+            "cls": "GEOSDataProvider::GEOSWkbWriteDataProvider",
+            "options": DataProviderActionCatalog::getActionOptionFromFields(
+                GEOSWkbWriteDataProvider::ConstructorOptions{"path",}, {
+                    "preselected": True,
+                    "required": True,
+                    "loc": "constructor",
+                }
+            ) + DataProviderActionCatalog::getActionOptionFromFields(
+                GEOSWkbWriteDataProvider::ConstructorOptions - ("path", "stream"), {
+                    "loc": "constructor",
+                }
+            ),
+        });
+    }
+}

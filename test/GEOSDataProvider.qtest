@@ -1,0 +1,490 @@
+#!/usr/bin/env qore
+# -*- mode: qore; indent-tabs-mode: nil -*-
+
+%modern
+%enable-all-warnings
+%requires geos
+%requires GEOSDataProvider
+%requires QUnit
+
+%exec-class GEOSDataProviderTest
+
+public class GEOSDataProviderTest inherits QUnit::Test {
+    constructor() : Test("GEOSDataProviderTest", "1.0") {
+        addTestCase("factory discovery", \factoryDiscoveryTests());
+        addTestCase("WKT read from string", \wktReadStringTests());
+        addTestCase("WKT read from file", \wktReadFileTests());
+        addTestCase("WKT write + read-back", \wktWriteReadRoundTripTests());
+        addTestCase("WKT empty lines", \wktEmptyLineTests());
+        addTestCase("WKT invalid geometry", \wktInvalidGeometryTests());
+        addTestCase("WKB hex read from string", \wkbHexReadTests());
+        addTestCase("WKB binary read from binary data", \wkbBinaryReadTests());
+        addTestCase("WKB hex write + read-back", \wkbHexWriteReadRoundTripTests());
+        addTestCase("WKB binary write + read-back", \wkbBinaryWriteReadRoundTripTests());
+        addTestCase("WKT to WKB conversion pipeline", \wktToWkbPipelineTests());
+        addTestCase("WKB writer accepts WKT input", \wkbWriterWktInputTests());
+        addTestCase("WKB writer accepts binary input", \wkbWriterBinaryInputTests());
+        addTestCase("negative tests", \negativeTests());
+        addTestCase("multiple geometry types", \multipleGeometryTypeTests());
+
+        set_return_value(main());
+    }
+
+    factoryDiscoveryTests() {
+        # Verify all 4 factories are discoverable
+        auto f = DataProvider::getFactory("geoswktread");
+        assertEq("geoswktread", f.getInfo().name);
+
+        f = DataProvider::getFactory("geoswktwrite");
+        assertEq("geoswktwrite", f.getInfo().name);
+
+        f = DataProvider::getFactory("geoswkbread");
+        assertEq("geoswkbread", f.getInfo().name);
+
+        f = DataProvider::getFactory("geoswkbwrite");
+        assertEq("geoswkbwrite", f.getInfo().name);
+
+        # Verify factory descriptions
+        assertEq("Data provider factory for reading WKT (Well-Known Text) geometry data",
+            DataProvider::getFactory("geoswktread").getInfo().desc);
+        assertEq("Data provider factory for writing WKT (Well-Known Text) geometry data",
+            DataProvider::getFactory("geoswktwrite").getInfo().desc);
+        assertEq("Data provider factory for reading WKB (Well-Known Binary) geometry data",
+            DataProvider::getFactory("geoswkbread").getInfo().desc);
+        assertEq("Data provider factory for writing WKB (Well-Known Binary) geometry data",
+            DataProvider::getFactory("geoswkbwrite").getInfo().desc);
+
+        # Verify factory creates providers
+        auto prov = DataProvider::getFactory("geoswktread").create({"data": "POINT (1 2)"});
+        assertEq("geoswktread", prov.getName());
+    }
+
+    wktReadStringTests() {
+        string wkt_data = "POINT (1 2)\nLINESTRING (0 0, 1 1, 2 2)\nPOLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))";
+        auto prov = new GEOSWktReadDataProvider({"data": wkt_data});
+        auto iter = prov.searchRecords();
+
+        # Record 1: POINT
+        assertTrue(iter.next());
+        hash<auto> rec = iter.getValue();
+        assertEq("POINT (1 2)", rec.geometry);
+        assertEq("Point", rec.type);
+        assertEq(1, rec.line_number);
+
+        # Record 2: LINESTRING
+        assertTrue(iter.next());
+        rec = iter.getValue();
+        assertEq("LINESTRING (0 0, 1 1, 2 2)", rec.geometry);
+        assertEq("LineString", rec.type);
+        assertEq(2, rec.line_number);
+
+        # Record 3: POLYGON
+        assertTrue(iter.next());
+        rec = iter.getValue();
+        assertEq("POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))", rec.geometry);
+        assertEq("Polygon", rec.type);
+        assertEq(3, rec.line_number);
+
+        # No more records
+        assertFalse(iter.next());
+    }
+
+    wktReadFileTests() {
+        # Write a temp WKT file, then read it back
+        string tmp_path = tmp_location() + "/geos_test_wkt_" + get_random_string(8) + ".wkt";
+        {
+            File f();
+            f.open2(tmp_path, O_CREAT | O_WRONLY | O_TRUNC);
+            f.write("POINT (10 20)\nLINESTRING (0 0, 5 5)\n");
+        }
+        on_exit {
+            unlink(tmp_path);
+        }
+
+        auto prov = new GEOSWktReadDataProvider({"path": tmp_path});
+        auto iter = prov.searchRecords();
+
+        assertTrue(iter.next());
+        hash<auto> rec = iter.getValue();
+        assertEq("POINT (10 20)", rec.geometry);
+        assertEq("Point", rec.type);
+
+        assertTrue(iter.next());
+        rec = iter.getValue();
+        assertEq("LINESTRING (0 0, 5 5)", rec.geometry);
+        assertEq("LineString", rec.type);
+
+        assertFalse(iter.next());
+
+        # Verify getName returns the path
+        assertEq(tmp_path, prov.getName());
+    }
+
+    wktWriteReadRoundTripTests() {
+        StringOutputStream sos();
+        auto wprov = new GEOSWktWriteDataProvider({"stream": sos});
+
+        # Write geometries
+        wprov.createRecord({"geometry": "POINT (1 2)"});
+        wprov.createRecord({"geometry": "LINESTRING (0 0, 1 1, 2 2)"});
+        wprov.createRecord({"geometry": "POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))"});
+
+        string output = sos.getData();
+
+        # Read back and verify
+        auto rprov = new GEOSWktReadDataProvider({"data": output});
+        auto iter = rprov.searchRecords();
+
+        assertTrue(iter.next());
+        assertEq("POINT (1 2)", iter.getValue().geometry);
+
+        assertTrue(iter.next());
+        assertEq("LINESTRING (0 0, 1 1, 2 2)", iter.getValue().geometry);
+
+        assertTrue(iter.next());
+        assertEq("POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))", iter.getValue().geometry);
+
+        assertFalse(iter.next());
+    }
+
+    wktEmptyLineTests() {
+        # Test with skip_empty_lines = True (default)
+        string data_with_empties = "POINT (1 2)\n\n\nLINESTRING (0 0, 1 1)\n\n";
+        auto prov = new GEOSWktReadDataProvider({"data": data_with_empties});
+        auto iter = prov.searchRecords();
+
+        assertTrue(iter.next());
+        assertEq("POINT (1 2)", iter.getValue().geometry);
+
+        assertTrue(iter.next());
+        assertEq("LINESTRING (0 0, 1 1)", iter.getValue().geometry);
+
+        assertFalse(iter.next());
+
+        # Test with skip_empty_lines = False - should throw on empty line
+        prov = new GEOSWktReadDataProvider({"data": "POINT (1 2)\n\nLINESTRING (0 0, 1 1)",
+            "skip_empty_lines": False});
+        iter = prov.searchRecords();
+        assertTrue(iter.next());
+        assertEq("POINT (1 2)", iter.getValue().geometry);
+        assertThrows("GEOS-WKT-ERROR", \iter.next());
+    }
+
+    wktInvalidGeometryTests() {
+        # Test with invalid WKT
+        string bad_data = "POINT (1 2)\nNOT_VALID_WKT\nLINESTRING (0 0, 1 1)";
+        auto prov = new GEOSWktReadDataProvider({"data": bad_data});
+        auto iter = prov.searchRecords();
+
+        assertTrue(iter.next());
+        assertEq("POINT (1 2)", iter.getValue().geometry);
+
+        # Next line should throw
+        assertThrows("GEOS-WKT-ERROR", \iter.next());
+    }
+
+    wkbHexReadTests() {
+        # Create hex WKB data
+        GEOSGeometry point = parse_wkt("POINT (1 2)");
+        GEOSGeometry line = parse_wkt("LINESTRING (0 0, 3 4)");
+        string hex_data = make_hex_string(make_wkb(point)) + "\n" + make_hex_string(make_wkb(line)) + "\n";
+
+        auto prov = new GEOSWkbReadDataProvider({"data": hex_data, "format": "hex"});
+        auto iter = prov.searchRecords();
+
+        # Record 1: POINT
+        assertTrue(iter.next());
+        hash<auto> rec = iter.getValue();
+        assertEq("Point", rec.type);
+        assertEq("POINT (1 2)", rec.wkt);
+        assertEq(NT_BINARY, rec.geometry.typeCode());
+        assertEq(1, rec.record_number);
+
+        # Record 2: LINESTRING
+        assertTrue(iter.next());
+        rec = iter.getValue();
+        assertEq("LineString", rec.type);
+        assertEq("LINESTRING (0 0, 3 4)", rec.wkt);
+        assertEq(2, rec.record_number);
+
+        assertFalse(iter.next());
+    }
+
+    wkbBinaryReadTests() {
+        # Create binary WKB data with length prefixes
+        binary point_wkb = make_wkb(parse_wkt("POINT (5 10)"));
+        binary line_wkb = make_wkb(parse_wkt("LINESTRING (0 0, 1 1)"));
+
+        binary bin_data = binary();
+        bin_data += encodeBEUint32(point_wkb.size());
+        bin_data += point_wkb;
+        bin_data += encodeBEUint32(line_wkb.size());
+        bin_data += line_wkb;
+
+        auto prov = new GEOSWkbReadDataProvider({"data": bin_data, "format": "binary"});
+        auto iter = prov.searchRecords();
+
+        assertTrue(iter.next());
+        hash<auto> rec = iter.getValue();
+        assertEq("Point", rec.type);
+        assertEq("POINT (5 10)", rec.wkt);
+
+        assertTrue(iter.next());
+        rec = iter.getValue();
+        assertEq("LineString", rec.type);
+        assertEq("LINESTRING (0 0, 1 1)", rec.wkt);
+
+        assertFalse(iter.next());
+    }
+
+    wkbHexWriteReadRoundTripTests() {
+        StringOutputStream sos();
+        auto wprov = new GEOSWkbWriteDataProvider({"stream": sos, "format": "hex"});
+
+        # Write using binary WKB
+        binary point_wkb = make_wkb(parse_wkt("POINT (1 2)"));
+        wprov.createRecord({"geometry": point_wkb});
+
+        binary line_wkb = make_wkb(parse_wkt("LINESTRING (0 0, 1 1, 2 2)"));
+        wprov.createRecord({"geometry": line_wkb});
+
+        string output = sos.getData();
+
+        # Read back
+        auto rprov = new GEOSWkbReadDataProvider({"data": output, "format": "hex"});
+        auto iter = rprov.searchRecords();
+
+        assertTrue(iter.next());
+        assertEq("POINT (1 2)", iter.getValue().wkt);
+
+        assertTrue(iter.next());
+        assertEq("LINESTRING (0 0, 1 1, 2 2)", iter.getValue().wkt);
+
+        assertFalse(iter.next());
+    }
+
+    wkbBinaryWriteReadRoundTripTests() {
+        BinaryOutputStream bos();
+        auto wprov = new GEOSWkbWriteDataProvider({"stream": bos, "format": "binary"});
+
+        # Write using binary WKB
+        wprov.createRecord({"geometry": make_wkb(parse_wkt("POINT (1 2)"))});
+        wprov.createRecord({"geometry": make_wkb(parse_wkt("POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))"))});
+
+        binary output = bos.getData();
+
+        # Read back
+        auto rprov = new GEOSWkbReadDataProvider({"data": output, "format": "binary"});
+        auto iter = rprov.searchRecords();
+
+        assertTrue(iter.next());
+        assertEq("POINT (1 2)", iter.getValue().wkt);
+
+        assertTrue(iter.next());
+        assertEq("POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))", iter.getValue().wkt);
+
+        assertFalse(iter.next());
+    }
+
+    wktToWkbPipelineTests() {
+        # Read WKT -> Write WKB -> Read WKB back -> Compare
+        string wkt_input = "POINT (10 20)\nLINESTRING (0 0, 1 1, 2 2)\nPOLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))";
+
+        # Read WKT
+        auto wkt_prov = new GEOSWktReadDataProvider({"data": wkt_input});
+        auto wkt_iter = wkt_prov.searchRecords();
+
+        # Write WKB
+        StringOutputStream sos();
+        auto wkb_wprov = new GEOSWkbWriteDataProvider({"stream": sos, "format": "hex"});
+
+        list<string> original_wkts = ();
+        while (wkt_iter.next()) {
+            hash<auto> rec = wkt_iter.getValue();
+            original_wkts += rec.geometry;
+            # Write WKT string directly (auto-converts to WKB)
+            wkb_wprov.createRecord({"geometry": rec.geometry});
+        }
+
+        # Read WKB back
+        auto wkb_rprov = new GEOSWkbReadDataProvider({"data": sos.getData(), "format": "hex"});
+        auto wkb_iter = wkb_rprov.searchRecords();
+
+        int idx = 0;
+        while (wkb_iter.next()) {
+            hash<auto> rec = wkb_iter.getValue();
+            assertEq(original_wkts[idx], rec.wkt);
+            idx++;
+        }
+        assertEq(3, idx);
+    }
+
+    wkbWriterWktInputTests() {
+        # Test that WKB writer accepts WKT string and auto-converts
+        StringOutputStream sos();
+        auto wprov = new GEOSWkbWriteDataProvider({"stream": sos, "format": "hex"});
+
+        wprov.createRecord({"geometry": "POINT (42 84)"});
+
+        string output = sos.getData();
+
+        # Read back and verify
+        auto rprov = new GEOSWkbReadDataProvider({"data": output, "format": "hex"});
+        auto iter = rprov.searchRecords();
+
+        assertTrue(iter.next());
+        assertEq("POINT (42 84)", iter.getValue().wkt);
+        assertEq("Point", iter.getValue().type);
+        assertFalse(iter.next());
+    }
+
+    wkbWriterBinaryInputTests() {
+        # Test that WKB writer accepts binary WKB data
+        binary wkb = make_wkb(parse_wkt("POINT (7 8)"));
+
+        StringOutputStream sos();
+        auto wprov = new GEOSWkbWriteDataProvider({"stream": sos, "format": "hex"});
+        wprov.createRecord({"geometry": wkb});
+
+        auto rprov = new GEOSWkbReadDataProvider({"data": sos.getData(), "format": "hex"});
+        auto iter = rprov.searchRecords();
+        assertTrue(iter.next());
+        assertEq("POINT (7 8)", iter.getValue().wkt);
+        assertFalse(iter.next());
+    }
+
+    negativeTests() {
+        # Missing input source for read
+        assertThrows("GEOS-WKT-ERROR", sub() {
+            new GEOSWktReadDataProvider({});
+        });
+
+        # Missing output target for write
+        assertThrows("GEOS-WKT-ERROR", sub() {
+            new GEOSWktWriteDataProvider({});
+        });
+
+        # Missing input source for WKB read
+        assertThrows("GEOS-WKB-ERROR", sub() {
+            new GEOSWkbReadDataProvider({});
+        });
+
+        # Missing output target for WKB write
+        assertThrows("GEOS-WKB-ERROR", sub() {
+            new GEOSWkbWriteDataProvider({});
+        });
+
+        # Invalid format for WKB read
+        assertThrows("GEOS-WKB-ERROR", sub() {
+            new GEOSWkbReadDataProvider({"data": "test", "format": "invalid"});
+        });
+
+        # Invalid format for WKB write
+        assertThrows("GEOS-WKB-ERROR", sub() {
+            new GEOSWkbWriteDataProvider({"stream": new StringOutputStream(), "format": "invalid"});
+        });
+
+        # Invalid WKT in write provider (createRecord wraps in CREATE-RECORD-ERROR)
+        StringOutputStream sos();
+        auto wprov = new GEOSWktWriteDataProvider({"stream": sos});
+        assertThrows("CREATE-RECORD-ERROR", sub() {
+            wprov.createRecord({"geometry": "NOT_VALID_WKT"});
+        });
+
+        # Invalid WKT in WKB write provider (auto-convert)
+        sos = new StringOutputStream();
+        auto wkb_wprov = new GEOSWkbWriteDataProvider({"stream": sos, "format": "hex"});
+        assertThrows("CREATE-RECORD-ERROR", sub() {
+            wkb_wprov.createRecord({"geometry": "NOT_VALID_WKT"});
+        });
+
+        # Invalid hex in WKB hex read
+        auto rprov = new GEOSWkbReadDataProvider({"data": "ZZZZ_NOT_HEX", "format": "hex"});
+        auto iter = rprov.searchRecords();
+        assertThrows("GEOS-WKB-ERROR", \iter.next());
+
+        # Invalid WKB binary data
+        binary bad_wkb = <deadbeef>;
+        rprov = new GEOSWkbReadDataProvider({"data": make_hex_string(bad_wkb), "format": "hex"});
+        iter = rprov.searchRecords();
+        assertThrows("GEOS-WKB-ERROR", \iter.next());
+
+        # Invalid geometry type in WKB writer
+        sos = new StringOutputStream();
+        wkb_wprov = new GEOSWkbWriteDataProvider({"stream": sos, "format": "hex"});
+        assertThrows("CREATE-RECORD-ERROR", sub() {
+            wkb_wprov.createRecord({"geometry": 12345});
+        });
+
+        # Incomplete binary record (truncated length prefix)
+        binary short_data = <0000>;
+        rprov = new GEOSWkbReadDataProvider({"data": short_data, "format": "binary"});
+        iter = rprov.searchRecords();
+        assertThrows("GEOS-WKB-ERROR", \iter.next());
+    }
+
+    multipleGeometryTypeTests() {
+        # Test all common geometry types through the WKT pipeline
+        list<hash<auto>> test_geoms = (
+            {"wkt": "POINT (1 2)", "type": "Point"},
+            {"wkt": "LINESTRING (0 0, 1 1, 2 2)", "type": "LineString"},
+            {"wkt": "POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0), (2 2, 8 2, 8 8, 2 8, 2 2))", "type": "Polygon"},
+            {"wkt": "MULTIPOINT ((0 0), (1 1), (2 2))", "type": "MultiPoint"},
+            {"wkt": "MULTILINESTRING ((0 0, 1 1), (2 2, 3 3))", "type": "MultiLineString"},
+            {"wkt": "MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)), ((2 2, 3 2, 3 3, 2 3, 2 2)))",
+                "type": "MultiPolygon"},
+            {"wkt": "GEOMETRYCOLLECTION (POINT (1 2), LINESTRING (0 0, 1 1))",
+                "type": "GeometryCollection"},
+        );
+
+        # Write WKT
+        StringOutputStream sos();
+        auto wprov = new GEOSWktWriteDataProvider({"stream": sos});
+        foreach hash<auto> tg in (test_geoms) {
+            wprov.createRecord({"geometry": tg.wkt});
+        }
+
+        # Read back and verify types
+        auto rprov = new GEOSWktReadDataProvider({"data": sos.getData()});
+        auto iter = rprov.searchRecords();
+
+        int idx = 0;
+        while (iter.next()) {
+            hash<auto> rec = iter.getValue();
+            assertEq(test_geoms[idx].type, rec.type);
+            # Verify geometry can be parsed
+            GEOSGeometry geom = parse_wkt(rec.geometry);
+            assertEq(test_geoms[idx].type, geom.geometryType());
+            idx++;
+        }
+        assertEq(test_geoms.size(), idx);
+
+        # Also test through WKB pipeline
+        sos = new StringOutputStream();
+        auto wkb_wprov = new GEOSWkbWriteDataProvider({"stream": sos, "format": "hex"});
+        foreach hash<auto> tg in (test_geoms) {
+            wkb_wprov.createRecord({"geometry": tg.wkt});
+        }
+
+        auto wkb_rprov = new GEOSWkbReadDataProvider({"data": sos.getData(), "format": "hex"});
+        auto wkb_iter = wkb_rprov.searchRecords();
+
+        idx = 0;
+        while (wkb_iter.next()) {
+            hash<auto> rec = wkb_iter.getValue();
+            assertEq(test_geoms[idx].type, rec.type);
+            idx++;
+        }
+        assertEq(test_geoms.size(), idx);
+    }
+
+    #! Helper: encode a big-endian uint32 as binary
+    private binary encodeBEUint32(int val) {
+        binary result = binary();
+        result += chr(val >> 24 & 0xff);
+        result += chr(val >> 16 & 0xff);
+        result += chr(val >> 8 & 0xff);
+        result += chr(val & 0xff);
+        return result;
+    }
+}
