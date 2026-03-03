@@ -49,12 +49,11 @@
 
     @section geostypes Type Mappings
 
-    | GEOS Type | Qore Type |
-    |-----------|-----------|
-    | Coordinate | \c hash<GEOSCoordinate> |
-    | Geometry | @ref Qore::GEOS::GEOSGeometry "GEOSGeometry" |
-    | WKT string | \c string |
-    | WKB data | \c binary |
+    |!GEOS Type|!Qore Type
+    |Coordinate|\c hash<GEOSCoordinate>
+    |Geometry|@ref Qore::GEOS::GEOSGeometry "GEOSGeometry"
+    |WKT string|\c string
+    |WKB data|\c binary
 
     @section geosexamples Examples
 
@@ -116,11 +115,10 @@ writer.createRecord({"geometry": "POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))"});
 
     @subsection geosbuildreqs Build Requirements
 
-    | Distribution | Packages |
-    |-------------|----------|
-    | Ubuntu / Debian | \c libgeos-dev |
-    | Fedora / RHEL | \c geos-devel |
-    | Alpine | \c geos-dev |
+    |!Distribution|!Packages
+    |Ubuntu / Debian|\c libgeos-dev
+    |Fedora / RHEL|\c geos-devel
+    |Alpine|\c geos-dev
 
     @subsection geosbuildsteps Build Steps
 
