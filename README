@@ -1,0 +1,68 @@
+Qore GEOS module (geos)
+
+INTRODUCTION
+------------
+The Qore geos module provides bindings to the GEOS (Geometry Engine - Open Source)
+C API for fast GIS data processing. GEOS provides spatial predicates, topology
+operations, geometry validation, spatial indexing, and WKT/WKB serialization.
+
+For more information about GEOS, see:
+    https://libgeos.org
+
+The module uses only the reentrant GEOS C API (_r variants) for thread safety.
+Each thread lazily initializes its own GEOS context handle via GEOS_init_r().
+
+Classes provided:
+    - GEOSGeometry: Core geometry wrapper with spatial predicates, topology
+      operations, distance calculations, and serialization
+    - GEOSPreparedGeometry: Pre-indexed geometry for fast repeated spatial queries
+    - GEOSSTRtree: STR-packed R-tree spatial index for envelope intersection queries
+    - GEOSWKTReader / GEOSWKTWriter: WKT parsing and serialization
+    - GEOSWKBReader / GEOSWKBWriter: WKB parsing and serialization
+
+Standalone functions:
+    - geos_version(): Returns the GEOS version string
+    - get_geos_info(): Returns detailed GEOS version information
+    - parse_wkt() / make_wkt(): Convenience WKT parsing/serialization
+    - parse_wkb() / make_wkb(): Convenience WKB parsing/serialization
+
+See the generated documentation for more detailed information.
+
+
+LICENSE
+-------
+The source code is released under the MIT license.
+See COPYING.MIT for details on the open-source license.
+
+
+BUILDING
+--------
+Requires qore 0.9+ and libgeos (with C API / geos_c.h) to build and run.
+
+To configure and build:
+    mkdir build
+    cd build
+    cmake ..
+    make
+
+To install:
+    make install
+
+To run tests:
+    make test
+
+CMake options:
+    -DCMAKE_INSTALL_PREFIX=/path    Set installation prefix
+    -DCMAKE_BUILD_TYPE=Release      Set build type (Release, Debug, etc.)
+
+If Qore or GEOS cannot be found automatically, you can specify:
+    cmake .. -DQORE_DIR=/path/to/qore -DGEOS_DIR=/path/to/geos
+
+
+CONTACT
+-------
+Please direct any questions to:
+    david@qore.org
+
+Or report issues at:
+    https://github.com/qoretechnologies/module-geos/issues

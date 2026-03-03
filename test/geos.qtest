@@ -1,0 +1,658 @@
+#!/usr/bin/env qore
+# -*- mode: qore; indent-tabs-mode: nil -*-
+
+%modern
+%enable-all-warnings
+%requires geos
+%requires QUnit
+
+%exec-class GeosTest
+
+public class GeosTest inherits QUnit::Test {
+    constructor() : Test("GeosTest", "1.0") {
+        addTestCase("version functions", \versionTests());
+        addTestCase("hashdecl types", \hashdeclTests());
+        addTestCase("geometry constructors", \constructorTests());
+        addTestCase("geometry copy", \copyTests());
+        addTestCase("geometry properties", \propertyTests());
+        addTestCase("spatial predicates", \spatialPredicateTests());
+        addTestCase("distance", \distanceTests());
+        addTestCase("linear referencing", \linearReferencingTests());
+        addTestCase("nearest points", \nearestPointsTests());
+        addTestCase("topology operations", \topologyTests());
+        addTestCase("coordinate access", \coordinateTests());
+        addTestCase("serialization", \serializationTests());
+        addTestCase("WKT reader/writer", \wktReaderWriterTests());
+        addTestCase("WKB reader/writer", \wkbReaderWriterTests());
+        addTestCase("prepared geometry", \preparedGeometryTests());
+        addTestCase("STRtree", \strtreeTests());
+        addTestCase("standalone functions", \standaloneFunctionTests());
+        addTestCase("geometry collections", \geometryCollectionTests());
+        addTestCase("SRID", \sridTests());
+        addTestCase("empty geometries", \emptyGeometryTests());
+        addTestCase("Z coordinates", \zCoordinateTests());
+        addTestCase("negative tests", \negativeTests());
+
+        set_return_value(main());
+    }
+
+    versionTests() {
+        string ver = geos_version();
+        assertGt(0, ver.size(), "geos_version() returns non-empty string");
+        assertRegex("^[0-9]+\\.[0-9]+\\.[0-9]+", ver, "geos_version() format");
+    }
+
+    hashdeclTests() {
+        hash<GEOSVersionInfo> info = get_geos_info();
+        assertEq(Type::String, info.version.type(), "GEOSVersionInfo.version type");
+        assertEq(Type::Int, info.major.type(), "GEOSVersionInfo.major type");
+        assertEq(Type::Int, info.minor.type(), "GEOSVersionInfo.minor type");
+        assertEq(Type::Int, info.patch.type(), "GEOSVersionInfo.patch type");
+        assertGt(0, info.major, "GEOSVersionInfo.major > 0");
+
+        # verify version string starts with major.minor.patch
+        string expected = sprintf("%d.%d.%d", info.major, info.minor, info.patch);
+        assertRegex("^" + expected, info.version, "version string matches parsed components");
+    }
+
+    constructorTests() {
+        # WKT constructor
+        GEOSGeometry pt = new GEOSGeometry("POINT (1.0 2.0)");
+        assertEq("Point", pt.geometryType(), "WKT constructor creates point");
+
+        GEOSGeometry line = new GEOSGeometry("LINESTRING (0 0, 10 10, 20 25)");
+        assertEq("LineString", line.geometryType(), "WKT constructor creates linestring");
+
+        GEOSGeometry poly = new GEOSGeometry("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        assertEq("Polygon", poly.geometryType(), "WKT constructor creates polygon");
+
+        # WKB constructor
+        binary wkb = pt.toWKB();
+        GEOSGeometry pt2 = new GEOSGeometry(wkb);
+        assertEq("Point", pt2.geometryType(), "WKB constructor creates point");
+        assertEq(pt.toWKT(), pt2.toWKT(), "WKB round-trip preserves geometry");
+    }
+
+    copyTests() {
+        GEOSGeometry orig = new GEOSGeometry("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        GEOSGeometry copy = orig.copy();
+        assertEq(orig.toWKT(), copy.toWKT(), "copy preserves geometry");
+        assertEq(orig.area(), copy.area(), "copy preserves area");
+
+        # modifying original doesn't affect copy
+        orig.setSRID(4326);
+        assertEq(4326, orig.getSRID(), "original SRID modified");
+        assertEq(0, copy.getSRID(), "copy SRID unchanged");
+    }
+
+    propertyTests() {
+        GEOSGeometry pt = parse_wkt("POINT (5 5)");
+        assertEq("Point", pt.geometryType(), "point type");
+        assertEq(1, pt.numPoints(), "point numPoints");
+        assertEq(1, pt.numGeometries(), "point numGeometries");
+        assertFalse(pt.isEmpty(), "point not empty");
+        assertTrue(pt.isValid(), "point is valid");
+        assertTrue(pt.isSimple(), "point is simple");
+
+        GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 10, 20 25, 50 60)");
+        assertEq("LineString", line.geometryType(), "linestring type");
+        assertEq(4, line.numPoints(), "linestring numPoints");
+
+        GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        assertEq("Polygon", poly.geometryType(), "polygon type");
+        assertEq(5, poly.numPoints(), "polygon numPoints (includes closing point)");
+
+        # area and length
+        assertFloatEq(100.0, poly.area(), "polygon area");
+        assertFloatEq(0.0, pt.area(), "point area is 0");
+        assertGt(0.0, line.length(), "linestring has positive length");
+        assertFloatEq(0.0, pt.length(), "point length is 0");
+    }
+
+    spatialPredicateTests() {
+        GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        GEOSGeometry inner = parse_wkt("POINT (5 5)");
+        GEOSGeometry outer = parse_wkt("POINT (20 20)");
+        GEOSGeometry edge = parse_wkt("POINT (10 5)");
+        GEOSGeometry overlap_poly = parse_wkt("POLYGON ((5 5, 15 5, 15 15, 5 15, 5 5))");
+
+        # contains
+        assertTrue(poly.contains(inner), "poly contains inner point");
+        assertFalse(poly.contains(outer), "poly doesn't contain outer point");
+
+        # intersects
+        assertTrue(poly.intersects(inner), "poly intersects inner point");
+        assertFalse(poly.intersects(outer), "poly doesn't intersect outer point");
+        assertTrue(poly.intersects(overlap_poly), "overlapping polygons intersect");
+
+        # within (inverse of contains)
+        assertTrue(inner.within(poly), "inner point within poly");
+        assertFalse(outer.within(poly), "outer point not within poly");
+
+        # disjoint (opposite of intersects)
+        assertFalse(poly.disjoint(inner), "poly not disjoint from inner point");
+        assertTrue(poly.disjoint(outer), "poly disjoint from outer point");
+
+        # touches
+        assertTrue(poly.touches(edge), "poly touches edge point");
+        assertFalse(poly.touches(inner), "poly doesn't touch inner point");
+
+        # overlaps (two polygons partially overlap)
+        assertTrue(poly.overlaps(overlap_poly), "overlapping polygons overlap");
+        assertFalse(poly.overlaps(inner), "poly doesn't overlap point");
+
+        # crosses
+        GEOSGeometry crossing_line = parse_wkt("LINESTRING (-5 5, 15 5)");
+        assertTrue(crossing_line.crosses(poly), "line crosses polygon");
+        assertFalse(inner.crosses(poly), "point doesn't cross polygon");
+
+        # covers/coveredBy
+        assertTrue(poly.covers(inner), "poly covers inner point");
+        assertTrue(poly.covers(edge), "poly covers edge point");
+        assertFalse(poly.covers(outer), "poly doesn't cover outer point");
+        assertTrue(inner.coveredBy(poly), "inner point covered by poly");
+        assertTrue(edge.coveredBy(poly), "edge point covered by poly");
+
+        # equals
+        GEOSGeometry poly2 = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        assertTrue(poly.equals(poly2), "identical polygons are equal");
+        assertFalse(poly.equals(overlap_poly), "different polygons not equal");
+    }
+
+    distanceTests() {
+        GEOSGeometry pt1 = parse_wkt("POINT (0 0)");
+        GEOSGeometry pt2 = parse_wkt("POINT (3 4)");
+        assertFloatEq(5.0, pt1.distance(pt2), "distance 3-4-5 triangle");
+
+        GEOSGeometry pt3 = parse_wkt("POINT (0 0)");
+        assertFloatEq(0.0, pt1.distance(pt3), "distance to same point is 0");
+
+        # distance from point to line
+        GEOSGeometry line = parse_wkt("LINESTRING (0 10, 10 10)");
+        GEOSGeometry pt4 = parse_wkt("POINT (5 0)");
+        assertFloatEq(10.0, pt4.distance(line), "distance from point to line");
+    }
+
+    linearReferencingTests() {
+        GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 0)");
+        GEOSGeometry pt = parse_wkt("POINT (5 0)");
+
+        # project
+        float proj = line.project(pt);
+        assertFloatEq(5.0, proj, "project midpoint on line");
+
+        # project at start
+        GEOSGeometry start_pt = parse_wkt("POINT (0 0)");
+        assertFloatEq(0.0, line.project(start_pt), "project at start");
+
+        # project at end
+        GEOSGeometry end_pt = parse_wkt("POINT (10 0)");
+        assertFloatEq(10.0, line.project(end_pt), "project at end");
+
+        # projectNormalized
+        float norm_proj = line.projectNormalized(pt);
+        assertFloatEq(0.5, norm_proj, "projectNormalized midpoint");
+
+        # interpolate
+        GEOSGeometry interp = line.interpolate(5.0);
+        assertEq("Point", interp.geometryType(), "interpolate returns point");
+        hash<GEOSCoordinate> c = interp.getCoordinate();
+        assertFloatEq(5.0, c.x, "interpolated x");
+        assertFloatEq(0.0, c.y, "interpolated y");
+
+        # interpolateNormalized
+        GEOSGeometry interp_norm = line.interpolateNormalized(0.5);
+        hash<GEOSCoordinate> cn = interp_norm.getCoordinate();
+        assertFloatEq(5.0, cn.x, "interpolateNormalized x");
+        assertFloatEq(0.0, cn.y, "interpolateNormalized y");
+
+        # interpolate at endpoints
+        GEOSGeometry start = line.interpolate(0.0);
+        hash<GEOSCoordinate> cs = start.getCoordinate();
+        assertFloatEq(0.0, cs.x, "interpolate at start x");
+
+        GEOSGeometry end = line.interpolate(10.0);
+        hash<GEOSCoordinate> ce = end.getCoordinate();
+        assertFloatEq(10.0, ce.x, "interpolate at end x");
+    }
+
+    nearestPointsTests() {
+        GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 0)");
+        GEOSGeometry pt = parse_wkt("POINT (5 5)");
+
+        list<hash<GEOSCoordinate>> nps = line.nearestPoints(pt);
+        assertEq(2, nps.size(), "nearestPoints returns 2 points");
+        assertFloatEq(5.0, nps[0].x, "nearest point on line x");
+        assertFloatEq(0.0, nps[0].y, "nearest point on line y");
+        assertFloatEq(5.0, nps[1].x, "nearest point on query x");
+        assertFloatEq(5.0, nps[1].y, "nearest point on query y");
+    }
+
+    topologyTests() {
+        GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+
+        # buffer
+        GEOSGeometry pt = parse_wkt("POINT (0 0)");
+        GEOSGeometry buffered = pt.buffer(5.0, 16);
+        assertEq("Polygon", buffered.geometryType(), "buffer creates polygon");
+        # area should be close to pi * r^2 = pi * 25 ≈ 78.54
+        assertGt(75.0, buffered.area(), "buffer area > 75");
+        assertGt(buffered.area(), 82.0, "buffer area < 82");
+
+        # intersection
+        GEOSGeometry poly2 = parse_wkt("POLYGON ((5 5, 15 5, 15 15, 5 15, 5 5))");
+        GEOSGeometry inter = poly.intersection(poly2);
+        assertEq("Polygon", inter.geometryType(), "intersection is polygon");
+        assertFloatEq(25.0, inter.area(), "intersection area");
+
+        # union
+        GEOSGeometry uni = poly.geomUnion(poly2);
+        assertEq("Polygon", uni.geometryType(), "union is polygon");
+        assertFloatEq(175.0, uni.area(), "union area");
+
+        # difference
+        GEOSGeometry diff = poly.difference(poly2);
+        assertFloatEq(75.0, diff.area(), "difference area");
+
+        # symmetric difference
+        GEOSGeometry sym = poly.symDifference(poly2);
+        assertFloatEq(150.0, sym.area(), "symDifference area");
+
+        # envelope
+        GEOSGeometry env = poly.envelope();
+        assertEq("Polygon", env.geometryType(), "envelope is polygon");
+        assertFloatEq(poly.area(), env.area(), "envelope area matches");
+
+        # convex hull
+        GEOSGeometry points = parse_wkt("MULTIPOINT ((0 0), (10 0), (5 5), (10 10), (0 10))");
+        GEOSGeometry hull = points.convexHull();
+        assertEq("Polygon", hull.geometryType(), "convex hull is polygon");
+        assertFloatEq(100.0, hull.area(), "convex hull area");
+
+        # centroid
+        GEOSGeometry centroid = poly.centroid();
+        assertEq("Point", centroid.geometryType(), "centroid is point");
+        hash<GEOSCoordinate> cc = centroid.getCoordinate();
+        assertFloatEq(5.0, cc.x, "centroid x");
+        assertFloatEq(5.0, cc.y, "centroid y");
+
+        # boundary
+        GEOSGeometry boundary = poly.boundary();
+        assertEq("LineString", boundary.geometryType(), "boundary of polygon is linestring");
+    }
+
+    coordinateTests() {
+        GEOSGeometry pt = parse_wkt("POINT (3.5 7.2)");
+        hash<GEOSCoordinate> c = pt.getCoordinate();
+        assertFloatEq(3.5, c.x, "getCoordinate x");
+        assertFloatEq(7.2, c.y, "getCoordinate y");
+
+        GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 10, 20 25)");
+        list<hash<GEOSCoordinate>> coords = line.getCoordinates();
+        assertEq(3, coords.size(), "getCoordinates count");
+        assertFloatEq(0.0, coords[0].x, "first coord x");
+        assertFloatEq(0.0, coords[0].y, "first coord y");
+        assertFloatEq(10.0, coords[1].x, "second coord x");
+        assertFloatEq(10.0, coords[1].y, "second coord y");
+        assertFloatEq(20.0, coords[2].x, "third coord x");
+        assertFloatEq(25.0, coords[2].y, "third coord y");
+    }
+
+    serializationTests() {
+        GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+
+        # toWKT
+        string wkt = poly.toWKT();
+        assertRegex("POLYGON", wkt, "toWKT contains POLYGON");
+
+        # toWKB
+        binary wkb = poly.toWKB();
+        assertGt(0, wkb.size(), "toWKB returns non-empty binary");
+
+        # round-trip WKT
+        GEOSGeometry from_wkt = parse_wkt(wkt);
+        assertFloatEq(poly.area(), from_wkt.area(), "WKT round-trip preserves area");
+
+        # round-trip WKB
+        GEOSGeometry from_wkb = parse_wkb(wkb);
+        assertFloatEq(poly.area(), from_wkb.area(), "WKB round-trip preserves area");
+    }
+
+    wktReaderWriterTests() {
+        # reader
+        GEOSWKTReader reader();
+        GEOSGeometry pt = reader.read("POINT (42 17)");
+        assertEq("Point", pt.geometryType(), "WKTReader creates geometry");
+        hash<GEOSCoordinate> c = pt.getCoordinate();
+        assertFloatEq(42.0, c.x, "WKTReader x");
+        assertFloatEq(17.0, c.y, "WKTReader y");
+
+        # writer
+        GEOSWKTWriter writer();
+        writer.setTrim(True);
+        string wkt = writer.write(pt);
+        assertEq("POINT (42 17)", wkt, "WKTWriter output");
+
+        # writer with rounding
+        GEOSGeometry pt2 = reader.read("POINT (1.23456789 9.87654321)");
+        writer.setRoundingPrecision(3);
+        string wkt2 = writer.write(pt2);
+        assertRegex("1\\.235", wkt2, "rounding precision applied");
+
+        # writer output dimension
+        writer.setOutputDimension(2);
+        string wkt3 = writer.write(pt);
+        assertRegex("POINT", wkt3, "setOutputDimension doesn't break output");
+    }
+
+    wkbReaderWriterTests() {
+        GEOSGeometry pt = parse_wkt("POINT (42 17)");
+
+        # writer
+        GEOSWKBWriter writer();
+        binary wkb = writer.write(pt);
+        assertGt(0, wkb.size(), "WKBWriter produces binary");
+
+        # reader
+        GEOSWKBReader reader();
+        GEOSGeometry pt2 = reader.read(wkb);
+        assertEq("Point", pt2.geometryType(), "WKBReader creates geometry");
+        hash<GEOSCoordinate> c = pt2.getCoordinate();
+        assertFloatEq(42.0, c.x, "WKBReader x");
+        assertFloatEq(17.0, c.y, "WKBReader y");
+
+        # hex round-trip
+        string hex = writer.writeHEX(pt);
+        assertGt(0, hex.size(), "writeHEX produces string");
+        GEOSGeometry pt3 = reader.readHEX(hex);
+        assertEq("Point", pt3.geometryType(), "readHEX creates geometry");
+        hash<GEOSCoordinate> c2 = pt3.getCoordinate();
+        assertFloatEq(42.0, c2.x, "readHEX x");
+        assertFloatEq(17.0, c2.y, "readHEX y");
+
+        # byte order and dimension settings
+        writer.setByteOrder(1);  # little-endian
+        binary wkb2 = writer.write(pt);
+        GEOSGeometry pt4 = reader.read(wkb2);
+        assertEq("Point", pt4.geometryType(), "little-endian WKB works");
+
+        writer.setOutputDimension(2);
+        binary wkb3 = writer.write(pt);
+        assertGt(0, wkb3.size(), "setOutputDimension doesn't break output");
+
+        writer.setIncludeSRID(True);
+        binary wkb4 = writer.write(pt);
+        assertGt(0, wkb4.size(), "setIncludeSRID doesn't break output");
+    }
+
+    preparedGeometryTests() {
+        GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        auto pg = poly.prepare();
+
+        GEOSGeometry inner = parse_wkt("POINT (5 5)");
+        GEOSGeometry outer = parse_wkt("POINT (20 20)");
+        GEOSGeometry edge = parse_wkt("POINT (10 5)");
+        GEOSGeometry small_poly = parse_wkt("POLYGON ((2 2, 4 2, 4 4, 2 4, 2 2))");
+
+        # contains
+        assertTrue(pg.contains(inner), "prepared contains inner");
+        assertFalse(pg.contains(outer), "prepared doesn't contain outer");
+
+        # containsProperly (excludes boundary)
+        assertTrue(pg.containsProperly(inner), "prepared containsProperly inner");
+        assertFalse(pg.containsProperly(edge), "prepared doesn't containsProperly edge point");
+
+        # intersects
+        assertTrue(pg.intersects(inner), "prepared intersects inner");
+        assertFalse(pg.intersects(outer), "prepared doesn't intersect outer");
+
+        # covers
+        assertTrue(pg.covers(inner), "prepared covers inner");
+        assertTrue(pg.covers(edge), "prepared covers edge");
+        assertFalse(pg.covers(outer), "prepared doesn't cover outer");
+
+        # coveredBy
+        assertTrue(pg.coveredBy(poly), "prepared coveredBy self");
+
+        # direct instantiation should fail
+        assertThrows("GEOSPREPAREDGEOMETRY-CONSTRUCTOR-ERROR", sub() {
+            new GEOSPreparedGeometry();
+        }, NOTHING, "direct PreparedGeometry construction fails");
+    }
+
+    strtreeTests() {
+        # basic insert and query
+        GEOSSTRtree tree(10);
+        assertEq(0, tree.size(), "empty tree size is 0");
+
+        GEOSGeometry pt1 = parse_wkt("POINT (1 1)");
+        GEOSGeometry pt2 = parse_wkt("POINT (2 2)");
+        GEOSGeometry pt3 = parse_wkt("POINT (100 100)");
+
+        tree.insert(pt1, "item1");
+        tree.insert(pt2, "item2");
+        tree.insert(pt3, "item3");
+        assertEq(3, tree.size(), "tree size after inserts");
+
+        # query with envelope that includes pt1 and pt2
+        GEOSGeometry query_env = parse_wkt("POLYGON ((0 0, 5 0, 5 5, 0 5, 0 0))");
+        list<auto> results = tree.query(query_env);
+        assertEq(2, results.size(), "query returns 2 items");
+        assertTrue(results.contains("item1"), "query contains item1");
+        assertTrue(results.contains("item2"), "query contains item2");
+
+        # query with envelope that includes only pt3
+        GEOSGeometry query_env2 = parse_wkt("POLYGON ((90 90, 110 90, 110 110, 90 110, 90 90))");
+        list<auto> results2 = tree.query(query_env2);
+        assertEq(1, results2.size(), "query returns 1 item");
+        assertEq("item3", results2[0], "query contains item3");
+
+        # query with envelope that matches nothing
+        GEOSGeometry query_env3 = parse_wkt("POLYGON ((50 50, 60 50, 60 60, 50 60, 50 50))");
+        list<auto> results3 = tree.query(query_env3);
+        assertEq(0, results3.size(), "query returns 0 items for no match");
+
+        # nearestItem
+        GEOSGeometry near_pt = parse_wkt("POINT (1.1 1.1)");
+        auto nearest = tree.nearestItem(near_pt);
+        # nearest should be one of our items
+        assertTrue(nearest == "item1" || nearest == "item2" || nearest == "item3",
+            "nearestItem returns a valid item");
+
+        # STRtree with complex data types
+        GEOSSTRtree tree2(4);
+        tree2.insert(parse_wkt("POINT (0 0)"), {"name": "origin", "value": 0});
+        tree2.insert(parse_wkt("POINT (10 10)"), {"name": "far", "value": 100});
+        assertEq(2, tree2.size(), "tree with hash items");
+
+        list<auto> r2 = tree2.query(parse_wkt("POLYGON ((-1 -1, 1 -1, 1 1, -1 1, -1 -1))"));
+        assertEq(1, r2.size(), "query with hash items");
+        assertEq("origin", r2[0].name, "hash item preserved");
+        assertEq(0, r2[0].value, "hash value preserved");
+
+        # STRtree with single item
+        GEOSSTRtree tree3(10);
+        tree3.insert(parse_wkt("POINT (5 5)"), "single");
+        auto nearest3 = tree3.nearestItem(parse_wkt("POINT (0 0)"));
+        assertEq("single", nearest3, "nearestItem with single item");
+    }
+
+    standaloneFunctionTests() {
+        # parse_wkt
+        GEOSGeometry pt = parse_wkt("POINT (1 2)");
+        assertEq("Point", pt.geometryType(), "parse_wkt creates geometry");
+
+        # make_wkt
+        string wkt = make_wkt(pt);
+        assertEq("POINT (1 2)", wkt, "make_wkt produces WKT");
+
+        # parse_wkb / make_wkb round-trip
+        binary wkb = make_wkb(pt);
+        GEOSGeometry pt2 = parse_wkb(wkb);
+        assertEq("POINT (1 2)", make_wkt(pt2), "WKB round-trip via functions");
+
+        # parse_wkt with various geometry types
+        GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 10)");
+        assertEq("LineString", line.geometryType(), "parse_wkt linestring");
+
+        GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        assertEq("Polygon", poly.geometryType(), "parse_wkt polygon");
+    }
+
+    geometryCollectionTests() {
+        GEOSGeometry mp = parse_wkt("MULTIPOINT ((0 0), (10 10), (20 20))");
+        assertEq("MultiPoint", mp.geometryType(), "multipoint type");
+        assertEq(3, mp.numGeometries(), "multipoint numGeometries");
+
+        # getGeometryN
+        GEOSGeometry first = mp.getGeometryN(0);
+        assertEq("Point", first.geometryType(), "getGeometryN returns point");
+        hash<GEOSCoordinate> c = first.getCoordinate();
+        assertFloatEq(0.0, c.x, "getGeometryN(0) x");
+        assertFloatEq(0.0, c.y, "getGeometryN(0) y");
+
+        GEOSGeometry last = mp.getGeometryN(2);
+        hash<GEOSCoordinate> c2 = last.getCoordinate();
+        assertFloatEq(20.0, c2.x, "getGeometryN(2) x");
+        assertFloatEq(20.0, c2.y, "getGeometryN(2) y");
+
+        # multilinestring
+        GEOSGeometry ml = parse_wkt("MULTILINESTRING ((0 0, 10 10), (20 20, 30 30))");
+        assertEq("MultiLineString", ml.geometryType(), "multilinestring type");
+        assertEq(2, ml.numGeometries(), "multilinestring numGeometries");
+
+        # multipolygon
+        GEOSGeometry mpoly = parse_wkt(
+            "MULTIPOLYGON (((0 0, 10 0, 10 10, 0 10, 0 0)), ((20 20, 30 20, 30 30, 20 30, 20 20)))");
+        assertEq("MultiPolygon", mpoly.geometryType(), "multipolygon type");
+        assertEq(2, mpoly.numGeometries(), "multipolygon numGeometries");
+        assertFloatEq(200.0, mpoly.area(), "multipolygon total area");
+
+        # geometry collection
+        GEOSGeometry gc = parse_wkt("GEOMETRYCOLLECTION (POINT (0 0), LINESTRING (0 0, 10 10))");
+        assertEq("GeometryCollection", gc.geometryType(), "geometry collection type");
+        assertEq(2, gc.numGeometries(), "geometry collection numGeometries");
+    }
+
+    sridTests() {
+        GEOSGeometry pt = parse_wkt("POINT (0 0)");
+        assertEq(0, pt.getSRID(), "default SRID is 0");
+
+        pt.setSRID(4326);
+        assertEq(4326, pt.getSRID(), "SRID set to 4326");
+
+        pt.setSRID(3857);
+        assertEq(3857, pt.getSRID(), "SRID changed to 3857");
+
+        # SRID preserved through WKB round-trip with SRID flag
+        GEOSWKBWriter writer();
+        writer.setIncludeSRID(True);
+        binary wkb = writer.write(pt);
+        GEOSWKBReader reader();
+        GEOSGeometry pt2 = reader.read(wkb);
+        assertEq(3857, pt2.getSRID(), "SRID preserved through WKB with SRID flag");
+    }
+
+    emptyGeometryTests() {
+        GEOSGeometry empty_pt = parse_wkt("POINT EMPTY");
+        assertTrue(empty_pt.isEmpty(), "empty point isEmpty");
+        assertEq("Point", empty_pt.geometryType(), "empty point type");
+        assertEq(0, empty_pt.numPoints(), "empty point numPoints");
+
+        GEOSGeometry empty_line = parse_wkt("LINESTRING EMPTY");
+        assertTrue(empty_line.isEmpty(), "empty linestring isEmpty");
+        assertFloatEq(0.0, empty_line.length(), "empty linestring length");
+
+        GEOSGeometry empty_poly = parse_wkt("POLYGON EMPTY");
+        assertTrue(empty_poly.isEmpty(), "empty polygon isEmpty");
+        assertFloatEq(0.0, empty_poly.area(), "empty polygon area");
+        assertTrue(empty_poly.isValid(), "empty polygon is valid");
+
+        # empty geometry collections
+        GEOSGeometry empty_gc = parse_wkt("GEOMETRYCOLLECTION EMPTY");
+        assertTrue(empty_gc.isEmpty(), "empty GC isEmpty");
+        assertEq(0, empty_gc.numGeometries(), "empty GC numGeometries");
+    }
+
+    zCoordinateTests() {
+        GEOSGeometry pt3d = parse_wkt("POINT Z (1 2 3)");
+        assertEq("Point", pt3d.geometryType(), "3D point type");
+
+        hash<GEOSCoordinate> c = pt3d.getCoordinate();
+        assertFloatEq(1.0, c.x, "3D point x");
+        assertFloatEq(2.0, c.y, "3D point y");
+        assertFloatEq(3.0, c.z, "3D point z");
+
+        GEOSGeometry line3d = parse_wkt("LINESTRING Z (0 0 0, 10 10 10, 20 25 30)");
+        list<hash<GEOSCoordinate>> coords = line3d.getCoordinates();
+        assertEq(3, coords.size(), "3D line coord count");
+        assertFloatEq(0.0, coords[0].z, "3D line first z");
+        assertFloatEq(10.0, coords[1].z, "3D line second z");
+        assertFloatEq(30.0, coords[2].z, "3D line third z");
+    }
+
+    negativeTests() {
+        # invalid WKT
+        assertThrows("GEOS-ERROR", sub() {
+            parse_wkt("NOT VALID WKT");
+        }, NOTHING, "invalid WKT throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            new GEOSGeometry("GARBAGE");
+        }, NOTHING, "invalid WKT in constructor throws");
+
+        # invalid WKT in reader
+        GEOSWKTReader reader();
+        assertThrows("GEOS-ERROR", sub() {
+            reader.read("INVALID");
+        }, NOTHING, "WKTReader invalid WKT throws");
+
+        # invalid WKB
+        GEOSWKBReader wkb_reader();
+        assertThrows("GEOS-ERROR", sub() {
+            wkb_reader.read(<deadbeef>);
+        }, NOTHING, "WKBReader invalid WKB throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            wkb_reader.readHEX("INVALID_HEX");
+        }, NOTHING, "WKBReader invalid HEX throws");
+
+        # out-of-range getGeometryN
+        GEOSGeometry pt = parse_wkt("POINT (0 0)");
+        assertThrows("GEOS-ERROR", sub() {
+            pt.getGeometryN(5);
+        }, NOTHING, "getGeometryN out of range throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            pt.getGeometryN(-1);
+        }, NOTHING, "getGeometryN negative index throws");
+
+        # empty WKT
+        assertThrows("GEOS-ERROR", sub() {
+            parse_wkt("");
+        }, NOTHING, "empty WKT throws");
+
+        # invalid WKB constructor
+        assertThrows("GEOS-ERROR", sub() {
+            new GEOSGeometry(<00>);
+        }, NOTHING, "invalid WKB constructor throws");
+    }
+
+    private assertFloatEq(float expected, float actual, string msg) {
+        float diff = abs(expected - actual);
+        float tolerance = 1e-6;
+        if (expected != 0.0) {
+            # relative tolerance
+            tolerance = abs(expected) * 1e-6;
+        }
+        assertTrue(diff <= tolerance, sprintf("%s: expected %f, got %f (diff: %e)", msg, expected, actual, diff));
+    }
+
+    private assertGt(float lower, float actual, string msg) {
+        assertTrue(actual > lower, sprintf("%s: expected > %f, got %f", msg, lower, actual));
+    }
+
+    private assertRegex(string pattern, string value, string msg) {
+        assertTrue(value.regex(pattern), sprintf("%s: '%s' doesn't match /%s/", msg, value, pattern));
+    }
+}

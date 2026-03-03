@@ -1,0 +1,156 @@
+/* -*- mode: c++; indent-tabs-mode: nil -*- */
+/*
+    QC_GEOSPreparedGeometry.qpp
+
+    Qore Programming Language
+
+    Copyright (C) 2026 Qore Technologies, s.r.o.
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+
+#include "QC_GEOSPreparedGeometry.h"
+#include "QC_GEOSGeometry.h"
+
+//! Pre-indexed geometry for fast repeated spatial queries
+/** A prepared geometry pre-computes spatial indexes on a geometry so that
+    repeated spatial predicate tests against different test geometries are
+    much faster than using the standard GEOSGeometry predicates.
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = new GEOSGeometry("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+GEOSPreparedGeometry pg = poly.prepare();
+for (int i = 0; i < 1000; ++i) {
+    GEOSGeometry pt = new GEOSGeometry(sprintf("POINT (%d %d)", i % 10, i / 100));
+    if (pg.contains(pt)) {
+        # ...
+    }
+}
+    @endcode
+
+    @note The prepared geometry holds a strong reference to the source
+    GEOSGeometry QoreObject, preventing it from being garbage collected.
+
+    @since geos 1.0
+*/
+qclass GEOSPreparedGeometry [arg=QoreGEOSPreparedGeometry* pg; ns=Qore::GEOS];
+
+//! This class cannot be directly instantiated; use GEOSGeometry::prepare()
+/** @throw GEOSPREPAREDGEOMETRY-CONSTRUCTOR-ERROR this class cannot be directly instantiated
+*/
+GEOSPreparedGeometry::constructor() {
+    xsink->raiseException("GEOSPREPAREDGEOMETRY-CONSTRUCTOR-ERROR",
+        "GEOSPreparedGeometry objects can only be created by calling GEOSGeometry::prepare()");
+}
+
+//! Tests whether the prepared geometry contains the given geometry
+/** @param other the geometry to test
+    @return @ref True if this geometry contains the other geometry
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSPreparedGeometry::contains(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSPreparedContains_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared contains")) {
+            xsink->raiseException("GEOS-ERROR", "error in prepared contains predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether the prepared geometry properly contains the given geometry
+/** @param other the geometry to test
+    @return @ref True if this geometry properly contains the other geometry
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSPreparedGeometry::containsProperly(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSPreparedContainsProperly_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared containsProperly")) {
+            xsink->raiseException("GEOS-ERROR", "error in prepared containsProperly predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether the prepared geometry intersects the given geometry
+/** @param other the geometry to test
+    @return @ref True if the geometries intersect
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSPreparedGeometry::intersects(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSPreparedIntersects_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared intersects")) {
+            xsink->raiseException("GEOS-ERROR", "error in prepared intersects predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether the prepared geometry covers the given geometry
+/** @param other the geometry to test
+    @return @ref True if this geometry covers the other geometry
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSPreparedGeometry::covers(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSPreparedCovers_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared covers")) {
+            xsink->raiseException("GEOS-ERROR", "error in prepared covers predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether the prepared geometry is covered by the given geometry
+/** @param other the geometry to test
+    @return @ref True if this geometry is covered by the other geometry
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSPreparedGeometry::coveredBy(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSPreparedCoveredBy_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared coveredBy")) {
+            xsink->raiseException("GEOS-ERROR", "error in prepared coveredBy predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}

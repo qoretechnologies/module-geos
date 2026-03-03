@@ -1,0 +1,35 @@
+# Build directories
+build/
+build-debug/
+
+# Generated source files from QPP
+src/ql_*.cpp
+src/QC_*.cpp
+
+# Object files
+*.o
+*.lo
+*.la
+*.so
+*.dylib
+
+# Autotools artifacts
+autom4te.cache/
+config.log
+config.status
+configure
+Makefile
+libtool
+
+# Doxygen
+docs/geos/
+docs/*.dox
+
+# Editor files
+*~
+*.swp
+.idea/
+.vscode/
+
+# macOS
+.DS_Store

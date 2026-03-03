@@ -1,0 +1,87 @@
+/* -*- mode: c++; indent-tabs-mode: nil -*- */
+/*
+    QC_GEOSWKBReader.qpp
+
+    Qore Programming Language
+
+    Copyright (C) 2026 Qore Technologies, s.r.o.
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+
+#include "QC_GEOSWKBReader.h"
+#include "QC_GEOSGeometry.h"
+
+//! WKB (Well-Known Binary) reader for parsing geometry binary data
+/** @par Example:
+    @code{.py}
+GEOSWKBReader reader();
+GEOSGeometry geom = reader.read(wkb_data);
+    @endcode
+
+    @since geos 1.0
+*/
+qclass GEOSWKBReader [arg=QoreGEOSWKBReader* r; ns=Qore::GEOS];
+
+//! Creates a new WKB reader
+/**
+*/
+GEOSWKBReader::constructor() {
+    self->setPrivate(CID_GEOSWKBREADER, new QoreGEOSWKBReader());
+}
+
+//! Reads WKB binary data and returns a GEOSGeometry object
+/** @param wkb the Well-Known Binary data to parse
+    @return a new GEOSGeometry object
+
+    @throw GEOS-ERROR error parsing WKB data
+*/
+GEOSGeometry GEOSWKBReader::read(binary wkb) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* geom = GEOSWKBReader_read_r(ctx, r->getReader(),
+        static_cast<const unsigned char*>(wkb->getPtr()), wkb->size());
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "WKBReader::read")) {
+            xsink->raiseException("GEOS-ERROR", "failed to parse WKB data");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(geom));
+}
+
+//! Reads a hex-encoded WKB string and returns a GEOSGeometry object
+/** @param hex the hex-encoded WKB string to parse
+    @return a new GEOSGeometry object
+
+    @throw GEOS-ERROR error parsing hex WKB string
+*/
+GEOSGeometry GEOSWKBReader::readHEX(string hex) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* geom = GEOSWKBReader_readHEX_r(ctx, r->getReader(),
+        reinterpret_cast<const unsigned char*>(hex->c_str()), hex->strlen());
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "WKBReader::readHEX")) {
+            xsink->raiseException("GEOS-ERROR", "failed to parse hex WKB string");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(geom));
+}

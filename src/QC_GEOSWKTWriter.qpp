@@ -1,0 +1,91 @@
+/* -*- mode: c++; indent-tabs-mode: nil -*- */
+/*
+    QC_GEOSWKTWriter.qpp
+
+    Qore Programming Language
+
+    Copyright (C) 2026 Qore Technologies, s.r.o.
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+
+#include "QC_GEOSWKTWriter.h"
+#include "QC_GEOSGeometry.h"
+
+//! WKT (Well-Known Text) writer for serializing geometries to strings
+/** @par Example:
+    @code{.py}
+GEOSWKTWriter writer();
+writer.setTrim(True);
+writer.setRoundingPrecision(3);
+string wkt = writer.write(geom);
+    @endcode
+
+    @since geos 1.0
+*/
+qclass GEOSWKTWriter [arg=QoreGEOSWKTWriter* w; ns=Qore::GEOS];
+
+//! Creates a new WKT writer
+/**
+*/
+GEOSWKTWriter::constructor() {
+    self->setPrivate(CID_GEOSWKTWRITER, new QoreGEOSWKTWriter());
+}
+
+//! Writes a geometry to a WKT string
+/** @param geom the geometry to serialize
+    @return the WKT string
+
+    @throw GEOS-ERROR error writing WKT
+*/
+string GEOSWKTWriter::write(GEOSGeometry[QoreGEOSGeometry] geom) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char* wkt = GEOSWKTWriter_write_r(ctx, w->getWriter(), geom->getGeometry());
+    if (!wkt) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "WKTWriter::write")) {
+            xsink->raiseException("GEOS-ERROR", "error writing WKT");
+        }
+        return QoreValue();
+    }
+    QoreStringNode* rv = new QoreStringNode(wkt);
+    GEOSFree_r(ctx, wkt);
+    return rv;
+}
+
+//! Sets whether to trim unnecessary trailing zeros
+/** @param trim @ref True to trim trailing zeros
+*/
+nothing GEOSWKTWriter::setTrim(bool trim) {
+    GEOSWKTWriter_setTrim_r(geos_get_context(), w->getWriter(), trim ? 1 : 0);
+}
+
+//! Sets the rounding precision for coordinates
+/** @param precision the number of decimal places
+*/
+nothing GEOSWKTWriter::setRoundingPrecision(int precision) {
+    GEOSWKTWriter_setRoundingPrecision_r(geos_get_context(), w->getWriter(), precision);
+}
+
+//! Sets the output dimension (2 or 3)
+/** @param dim the output dimension
+*/
+nothing GEOSWKTWriter::setOutputDimension(int dim) {
+    GEOSWKTWriter_setOutputDimension_r(geos_get_context(), w->getWriter(), dim);
+}

@@ -1,0 +1,114 @@
+/* -*- mode: c++; indent-tabs-mode: nil -*- */
+/*
+    QC_GEOSWKBWriter.qpp
+
+    Qore Programming Language
+
+    Copyright (C) 2026 Qore Technologies, s.r.o.
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+
+#include "QC_GEOSWKBWriter.h"
+#include "QC_GEOSGeometry.h"
+
+//! WKB (Well-Known Binary) writer for serializing geometries to binary data
+/** @par Example:
+    @code{.py}
+GEOSWKBWriter writer();
+writer.setIncludeSRID(True);
+binary wkb = writer.write(geom);
+    @endcode
+
+    @since geos 1.0
+*/
+qclass GEOSWKBWriter [arg=QoreGEOSWKBWriter* w; ns=Qore::GEOS];
+
+//! Creates a new WKB writer
+/**
+*/
+GEOSWKBWriter::constructor() {
+    self->setPrivate(CID_GEOSWKBWRITER, new QoreGEOSWKBWriter());
+}
+
+//! Writes a geometry to WKB binary data
+/** @param geom the geometry to serialize
+    @return the WKB binary data
+
+    @throw GEOS-ERROR error writing WKB
+*/
+binary GEOSWKBWriter::write(GEOSGeometry[QoreGEOSGeometry] geom) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    size_t size;
+    unsigned char* wkb = GEOSWKBWriter_write_r(ctx, w->getWriter(), geom->getGeometry(), &size);
+    if (!wkb) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "WKBWriter::write")) {
+            xsink->raiseException("GEOS-ERROR", "error writing WKB");
+        }
+        return QoreValue();
+    }
+    BinaryNode* rv = new BinaryNode;
+    rv->append(wkb, size);
+    GEOSFree_r(ctx, wkb);
+    return rv;
+}
+
+//! Writes a geometry to a hex-encoded WKB string
+/** @param geom the geometry to serialize
+    @return the hex-encoded WKB string
+
+    @throw GEOS-ERROR error writing hex WKB
+*/
+string GEOSWKBWriter::writeHEX(GEOSGeometry[QoreGEOSGeometry] geom) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    size_t size;
+    unsigned char* hex = GEOSWKBWriter_writeHEX_r(ctx, w->getWriter(), geom->getGeometry(), &size);
+    if (!hex) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "WKBWriter::writeHEX")) {
+            xsink->raiseException("GEOS-ERROR", "error writing hex WKB");
+        }
+        return QoreValue();
+    }
+    QoreStringNode* rv = new QoreStringNode(reinterpret_cast<const char*>(hex), size);
+    GEOSFree_r(ctx, hex);
+    return rv;
+}
+
+//! Sets the byte order for WKB output
+/** @param order 0 for big-endian (XDR), 1 for little-endian (NDR)
+*/
+nothing GEOSWKBWriter::setByteOrder(int order) {
+    GEOSWKBWriter_setByteOrder_r(geos_get_context(), w->getWriter(), order);
+}
+
+//! Sets the output dimension (2 or 3)
+/** @param dim the output dimension
+*/
+nothing GEOSWKBWriter::setOutputDimension(int dim) {
+    GEOSWKBWriter_setOutputDimension_r(geos_get_context(), w->getWriter(), dim);
+}
+
+//! Sets whether to include the SRID in the output
+/** @param includeSRID @ref True to include the SRID
+*/
+nothing GEOSWKBWriter::setIncludeSRID(bool includeSRID) {
+    GEOSWKBWriter_setIncludeSRID_r(geos_get_context(), w->getWriter(), includeSRID ? 1 : 0);
+}

@@ -1,0 +1,104 @@
+/** @mainpage Qore geos Module
+
+    @tableofcontents
+
+    @section geosintro Introduction
+
+    The geos module provides <a href="https://libgeos.org">GEOS (Geometry Engine - Open Source)</a> bindings for
+    %Qore, enabling fast GIS data processing with spatial predicates, topology operations, spatial indexing, and
+    WKT/WKB serialization.
+
+    This module is released under the MIT license (see COPYING.MIT in the source distribution for more information).
+
+    The module is tagged as such in the module's header (meaning it can be loaded unconditionally regardless of how
+    the %Qore library was initialized).
+
+    Like all Qore components, the geos module is thread-safe. Each thread lazily initializes its own GEOS context
+    handle using the reentrant GEOS C API (\c _r variants).
+
+    The underlying geometry functionality is provided by <a href="https://libgeos.org">GEOS (libgeos)</a>.
+
+    @section geosclasses Classes
+
+    The following classes are provided:
+    - @ref Qore::GEOS::GEOSGeometry "GEOSGeometry" - Core geometry wrapper with spatial predicates, topology
+      operations, distance calculations, linear referencing, coordinate access, and WKT/WKB serialization
+    - @ref Qore::GEOS::GEOSPreparedGeometry "GEOSPreparedGeometry" - Pre-indexed geometry for fast repeated
+      spatial queries
+    - @ref Qore::GEOS::GEOSSTRtree "GEOSSTRtree" - STR-packed R-tree spatial index for envelope intersection
+      queries and nearest-neighbor searches
+    - @ref Qore::GEOS::GEOSWKTReader "GEOSWKTReader" - WKT parsing
+    - @ref Qore::GEOS::GEOSWKTWriter "GEOSWKTWriter" - WKT serialization with formatting options
+    - @ref Qore::GEOS::GEOSWKBReader "GEOSWKBReader" - WKB parsing (binary and hex)
+    - @ref Qore::GEOS::GEOSWKBWriter "GEOSWKBWriter" - WKB serialization (binary and hex)
+
+    @section geosfunctions Standalone Functions
+
+    - @ref Qore::GEOS::geos_version() "geos_version()" - Returns the GEOS version string
+    - @ref Qore::GEOS::get_geos_info() "get_geos_info()" - Returns detailed GEOS version information
+    - @ref Qore::GEOS::parse_wkt() "parse_wkt()" - Convenience WKT parsing
+    - @ref Qore::GEOS::make_wkt() "make_wkt()" - Convenience WKT serialization
+    - @ref Qore::GEOS::parse_wkb() "parse_wkb()" - Convenience WKB parsing
+    - @ref Qore::GEOS::make_wkb() "make_wkb()" - Convenience WKB serialization
+
+    @section geostypes Type Mappings
+
+    | GEOS Type | Qore Type |
+    |-----------|-----------|
+    | Coordinate | @ref Qore::GEOS::GEOSCoordinate "hash<GEOSCoordinate>" |
+    | Geometry | @ref Qore::GEOS::GEOSGeometry "GEOSGeometry" |
+    | WKT string | @ref string_type "string" |
+    | WKB data | @ref binary_type "binary" |
+
+    @section geosexamples Examples
+
+    @par Create a geometry from WKT and perform operations:
+    @code{.py}
+%modern
+%requires geos
+
+GEOSGeometry poly = new GEOSGeometry("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+GEOSGeometry point = new GEOSGeometry("POINT (5 5)");
+
+printf("contains: %y\n", poly.contains(point));  # True
+printf("area: %y\n", poly.area());                # 100.0
+printf("centroid: %y\n", make_wkt(poly.centroid())); # "POINT (5 5)"
+    @endcode
+
+    @par Use prepared geometry for fast repeated queries:
+    @code{.py}
+GEOSGeometry poly = new GEOSGeometry("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+GEOSPreparedGeometry pg = poly.prepare();
+for (int i = 0; i < 1000; ++i) {
+    GEOSGeometry pt = parse_wkt(sprintf("POINT (%d %d)", i % 10, i / 100));
+    if (pg.contains(pt)) {
+        # handle contained point
+    }
+}
+    @endcode
+
+    @par Use STRtree for spatial indexing:
+    @code{.py}
+GEOSSTRtree tree(10);
+tree.insert(parse_wkt("POINT (1 1)"), "A");
+tree.insert(parse_wkt("POINT (2 2)"), "B");
+tree.insert(parse_wkt("POINT (100 100)"), "C");
+
+list<auto> results = tree.query(parse_wkt("POLYGON ((0 0, 5 0, 5 5, 0 5, 0 0))"));
+# results contains "A" and "B"
+    @endcode
+
+    @section geosreleasenotes Release Notes
+
+    @subsection geos_1_0 geos Module Version 1.0
+
+    <b>New Features and Bug Fixes</b>
+    - Initial release
+    - Classes: GEOSGeometry, GEOSPreparedGeometry, GEOSSTRtree, GEOSWKTReader,
+      GEOSWKTWriter, GEOSWKBReader, GEOSWKBWriter
+    - Standalone functions: geos_version(), get_geos_info(), parse_wkt(), make_wkt(),
+      parse_wkb(), make_wkb()
+    - Hashdecls: GEOSCoordinate, GEOSVersionInfo
+    - Thread-safe implementation using reentrant GEOS C API
+    - Cooperative cancellation support in STRtree queries
+*/

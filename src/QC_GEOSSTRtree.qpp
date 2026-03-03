@@ -1,0 +1,166 @@
+/* -*- mode: c++; indent-tabs-mode: nil -*- */
+/*
+    QC_GEOSSTRtree.qpp
+
+    Qore Programming Language
+
+    Copyright (C) 2026 Qore Technologies, s.r.o.
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+
+#include "QC_GEOSSTRtree.h"
+#include "QC_GEOSGeometry.h"
+
+#include <qore/qore_thread.h>
+
+// Query callback for STRtree
+static void strtree_query_callback(void* item, void* userdata) {
+    QueryCallbackContext* ctx = static_cast<QueryCallbackContext*>(userdata);
+    if (*ctx->xsink) {
+        return;
+    }
+    // check for cancellation every 1000 items
+    if (++ctx->count % 1000 == 0) {
+        if (qore_check_cancel(ctx->xsink, "STRtree query")) {
+            return;
+        }
+    }
+    TreeEntry* entry = static_cast<TreeEntry*>(item);
+    entry->item.refSelf();
+    ctx->result->operator->()->push(entry->item, ctx->xsink);
+}
+
+// Nearest item callback for STRtree
+static int strtree_nearest_callback(const void* item, const void* queryItem, double* distance, void* userdata) {
+    // This callback computes distance between items for nearest-neighbor search.
+    // GEOS uses the geometry envelopes for the index, so we just return 1 to
+    // indicate we accept the item and let GEOS use its internal distance logic.
+    return 1;
+}
+
+//! STR-packed R-tree spatial index for fast envelope intersection queries
+/** The GEOSSTRtree provides a spatial index that uses the Sort-Tile-Recursive
+    (STR) algorithm for efficient spatial queries.
+
+    Each item inserted into the tree is associated with a geometry (used for
+    indexing by envelope) and an arbitrary user data value.
+
+    @par Example:
+    @code{.py}
+GEOSSTRtree tree(10);
+tree.insert(new GEOSGeometry("POINT (1 1)"), "item1");
+tree.insert(new GEOSGeometry("POINT (2 2)"), "item2");
+tree.insert(new GEOSGeometry("POINT (100 100)"), "item3");
+GEOSGeometry query_env = new GEOSGeometry("POLYGON ((0 0, 5 0, 5 5, 0 5, 0 0))");
+list<auto> results = tree.query(query_env);
+# results contains "item1" and "item2"
+    @endcode
+
+    @since geos 1.0
+*/
+qclass GEOSSTRtree [arg=QoreGEOSSTRtree* t; ns=Qore::GEOS];
+
+//! Creates a new STRtree spatial index
+/** @param nodeCapacity the maximum number of child nodes per internal node (default 10)
+
+    @par Example:
+    @code{.py}
+GEOSSTRtree tree(10);
+    @endcode
+*/
+GEOSSTRtree::constructor(int nodeCapacity = 10) {
+    self->setPrivate(CID_GEOSSTRTREE, new QoreGEOSSTRtree(nodeCapacity));
+}
+
+//! Inserts a geometry and associated user data into the tree
+/** @param geom the geometry to use for spatial indexing (envelope is used)
+    @param item the user data to associate with this geometry
+
+    @par Example:
+    @code{.py}
+tree.insert(geom, {"name": "feature1", "value": 42});
+    @endcode
+*/
+nothing GEOSSTRtree::insert(GEOSGeometry[QoreGEOSGeometry] geom, auto item) {
+
+    // get the QoreObject for the geometry argument
+    QoreObject* geomObj = args->retrieveEntry(0).get<QoreObject>();
+    t->insert(geomObj, *geom, item);
+}
+
+//! Queries the tree for items whose envelope intersects the given geometry's envelope
+/** @param geom the query geometry (its envelope is used for the query)
+    @return a list of user data items whose associated geometries' envelopes
+            intersect the query geometry's envelope
+
+    @throw GEOS-ERROR error in query
+    @throw THREAD-CANCELLED if thread cancellation is requested during query
+    @throw PROGRAM-INTERRUPTED if program interrupt is requested during query
+*/
+list<auto> GEOSSTRtree::query(GEOSGeometry[QoreGEOSGeometry] geom) {
+
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+
+    ReferenceHolder<QoreListNode> result(new QoreListNode(autoTypeInfo), xsink);
+    QueryCallbackContext cbctx;
+    cbctx.result = &result;
+    cbctx.xsink = xsink;
+    cbctx.count = 0;
+
+    GEOSSTRtree_query_r(ctx, t->getTree(), geom->getGeometry(), strtree_query_callback, &cbctx);
+    if (*xsink) {
+        return QoreValue();
+    }
+    return result.release();
+}
+
+//! Returns the nearest item to the given geometry
+/** @param geom the query geometry
+    @return the user data of the nearest item, or @ref nothing if the tree is empty
+
+    @throw GEOS-ERROR error in nearest query
+*/
+auto GEOSSTRtree::nearestItem(GEOSGeometry[QoreGEOSGeometry] geom) {
+
+    if (t->size() == 0) {
+        return QoreValue();
+    }
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+
+    // use the first entry as the initial item for the search
+    const TreeEntry* nearest = static_cast<const TreeEntry*>(
+        GEOSSTRtree_nearest_generic_r(ctx, t->getTree(), geom->getGeometry(),
+            geom->getGeometry(), strtree_nearest_callback, nullptr));
+    if (!nearest) {
+        check_geos_error(xsink, "GEOS-ERROR", "nearestItem");
+        return QoreValue();
+    }
+    nearest->item.refSelf();
+    return nearest->item;
+}
+
+//! Returns the number of items in the tree
+/** @return the number of inserted items
+*/
+int GEOSSTRtree::size() [flags=RET_VALUE_ONLY] {
+    return (int64)t->size();
+}

@@ -1,0 +1,934 @@
+/* -*- mode: c++; indent-tabs-mode: nil -*- */
+/*
+    QC_GEOSGeometry.qpp
+
+    Qore Programming Language
+
+    Copyright (C) 2026 Qore Technologies, s.r.o.
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+
+#include "QC_GEOSGeometry.h"
+#include "QC_GEOSPreparedGeometry.h"
+
+//! Core geometry class wrapping the GEOS GEOSGeometry type
+/** This class provides the main interface for working with geometries in GEOS.
+    Geometries can be created from WKT strings or WKB binary data, and support
+    spatial predicates, topology operations, and serialization.
+
+    @par Example:
+    @code{.py}
+GEOSGeometry point = new GEOSGeometry("POINT (1.0 2.0)");
+GEOSGeometry poly = new GEOSGeometry("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+printf("contains: %y\n", poly.contains(point));
+printf("area: %y\n", poly.area());
+    @endcode
+
+    @since geos 1.0
+*/
+qclass GEOSGeometry [arg=QoreGEOSGeometry* g; ns=Qore::GEOS];
+
+//! Creates a GEOSGeometry object from a WKT string
+/** @param wkt the Well-Known Text representation of the geometry
+
+    @par Example:
+    @code{.py}
+GEOSGeometry geom = new GEOSGeometry("POINT (1.0 2.0)");
+    @endcode
+
+    @throw GEOS-ERROR error parsing WKT string
+*/
+GEOSGeometry::constructor(string wkt) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSWKTReader* reader = GEOSWKTReader_create_r(ctx);
+    if (!reader) {
+        xsink->raiseException("GEOS-ERROR", "failed to create WKT reader");
+        return;
+    }
+    GEOSGeometry* geom = GEOSWKTReader_read_r(ctx, reader, wkt->c_str());
+    GEOSWKTReader_destroy_r(ctx, reader);
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "failed to parse WKT")) {
+            xsink->raiseException("GEOS-ERROR", "failed to parse WKT string");
+        }
+        return;
+    }
+    self->setPrivate(CID_GEOSGEOMETRY, new QoreGEOSGeometry(geom));
+}
+
+//! Creates a GEOSGeometry object from WKB binary data
+/** @param wkb the Well-Known Binary representation of the geometry
+
+    @par Example:
+    @code{.py}
+GEOSGeometry geom = new GEOSGeometry(wkb_data);
+    @endcode
+
+    @throw GEOS-ERROR error parsing WKB data
+*/
+GEOSGeometry::constructor(binary wkb) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSWKBReader* reader = GEOSWKBReader_create_r(ctx);
+    if (!reader) {
+        xsink->raiseException("GEOS-ERROR", "failed to create WKB reader");
+        return;
+    }
+    GEOSGeometry* geom = GEOSWKBReader_read_r(ctx, reader,
+        static_cast<const unsigned char*>(wkb->getPtr()), wkb->size());
+    GEOSWKBReader_destroy_r(ctx, reader);
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "failed to parse WKB")) {
+            xsink->raiseException("GEOS-ERROR", "failed to parse WKB data");
+        }
+        return;
+    }
+    self->setPrivate(CID_GEOSGEOMETRY, new QoreGEOSGeometry(geom));
+}
+
+//! Creates a copy of the geometry
+/** @par Example:
+    @code{.py}
+GEOSGeometry copy = geom.copy();
+    @endcode
+
+    @throw GEOS-ERROR error copying geometry
+*/
+GEOSGeometry::copy() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* clone = GEOSGeom_clone_r(ctx, g->getGeometry());
+    if (!clone) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "failed to clone geometry")) {
+            xsink->raiseException("GEOS-ERROR", "failed to clone geometry");
+        }
+        return;
+    }
+    self->setPrivate(CID_GEOSGEOMETRY, new QoreGEOSGeometry(clone));
+}
+
+//! Tests whether this geometry contains the given geometry
+/** @param other the geometry to test
+    @return @ref True if this geometry contains the other geometry
+
+    @par Example:
+    @code{.py}
+bool result = poly.contains(point);
+    @endcode
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSGeometry::contains(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSContains_r(ctx, g->getGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "contains")) {
+            xsink->raiseException("GEOS-ERROR", "error in contains predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether this geometry intersects the given geometry
+/** @param other the geometry to test
+    @return @ref True if the geometries intersect
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSGeometry::intersects(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSIntersects_r(ctx, g->getGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "intersects")) {
+            xsink->raiseException("GEOS-ERROR", "error in intersects predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether this geometry is within the given geometry
+/** @param other the geometry to test
+    @return @ref True if this geometry is within the other geometry
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSGeometry::within(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSWithin_r(ctx, g->getGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "within")) {
+            xsink->raiseException("GEOS-ERROR", "error in within predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether this geometry crosses the given geometry
+/** @param other the geometry to test
+    @return @ref True if the geometries cross each other
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSGeometry::crosses(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSCrosses_r(ctx, g->getGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "crosses")) {
+            xsink->raiseException("GEOS-ERROR", "error in crosses predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether this geometry touches the given geometry
+/** @param other the geometry to test
+    @return @ref True if the geometries touch
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSGeometry::touches(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSTouches_r(ctx, g->getGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "touches")) {
+            xsink->raiseException("GEOS-ERROR", "error in touches predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether this geometry overlaps the given geometry
+/** @param other the geometry to test
+    @return @ref True if the geometries overlap
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSGeometry::overlaps(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSOverlaps_r(ctx, g->getGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "overlaps")) {
+            xsink->raiseException("GEOS-ERROR", "error in overlaps predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether this geometry is disjoint from the given geometry
+/** @param other the geometry to test
+    @return @ref True if the geometries are disjoint
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSGeometry::disjoint(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSDisjoint_r(ctx, g->getGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "disjoint")) {
+            xsink->raiseException("GEOS-ERROR", "error in disjoint predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether this geometry covers the given geometry
+/** @param other the geometry to test
+    @return @ref True if this geometry covers the other geometry
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSGeometry::covers(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSCovers_r(ctx, g->getGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "covers")) {
+            xsink->raiseException("GEOS-ERROR", "error in covers predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether this geometry is covered by the given geometry
+/** @param other the geometry to test
+    @return @ref True if this geometry is covered by the other geometry
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSGeometry::coveredBy(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSCoveredBy_r(ctx, g->getGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "coveredBy")) {
+            xsink->raiseException("GEOS-ERROR", "error in coveredBy predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether this geometry is topologically equal to the given geometry
+/** @param other the geometry to test
+    @return @ref True if the geometries are equal
+
+    @throw GEOS-ERROR error in spatial predicate
+*/
+bool GEOSGeometry::equals(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSEquals_r(ctx, g->getGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "equals")) {
+            xsink->raiseException("GEOS-ERROR", "error in equals predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Computes the distance between this geometry and another
+/** @param other the geometry to compute distance to
+    @return the distance between the closest points of the two geometries
+
+    @par Example:
+    @code{.py}
+float d = geom1.distance(geom2);
+    @endcode
+
+    @throw GEOS-ERROR error computing distance
+*/
+float GEOSGeometry::distance(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double dist;
+    if (!GEOSDistance_r(ctx, g->getGeometry(), other->getGeometry(), &dist)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "distance")) {
+            xsink->raiseException("GEOS-ERROR", "error computing distance");
+        }
+        return QoreValue();
+    }
+    return dist;
+}
+
+//! Projects a point onto this geometry (linear referencing)
+/** Returns the distance along this geometry to the point nearest the given point.
+    This geometry must be a lineal geometry (LineString or MultiLineString).
+
+    @param point the point to project
+    @return the distance along this geometry to the nearest point
+
+    @throw GEOS-ERROR error in projection or wrong geometry type
+*/
+float GEOSGeometry::project(GEOSGeometry[QoreGEOSGeometry] point) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double d = GEOSProject_r(ctx, g->getGeometry(), point->getGeometry());
+    if (d < 0.0) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "project")) {
+            xsink->raiseException("GEOS-ERROR", "error in project");
+        }
+        return QoreValue();
+    }
+    return d;
+}
+
+//! Projects a point onto this geometry using normalized distance
+/** Returns the distance fraction (0.0 to 1.0) along this geometry to the
+    point nearest the given point.
+
+    @param point the point to project
+    @return the normalized distance (0.0 - 1.0) along this geometry
+
+    @throw GEOS-ERROR error in projection or wrong geometry type
+*/
+float GEOSGeometry::projectNormalized(GEOSGeometry[QoreGEOSGeometry] point) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double d = GEOSProjectNormalized_r(ctx, g->getGeometry(), point->getGeometry());
+    if (d < 0.0) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "projectNormalized")) {
+            xsink->raiseException("GEOS-ERROR", "error in projectNormalized");
+        }
+        return QoreValue();
+    }
+    return d;
+}
+
+//! Returns the point at the given distance along this geometry (linear referencing)
+/** @param distance the distance along the geometry
+    @return a new GEOSGeometry point at the given distance
+
+    @throw GEOS-ERROR error in interpolation or wrong geometry type
+*/
+GEOSGeometry GEOSGeometry::interpolate(float distance) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSInterpolate_r(ctx, g->getGeometry(), distance);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "interpolate")) {
+            xsink->raiseException("GEOS-ERROR", "error in interpolate");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns the point at the given normalized distance along this geometry
+/** @param fraction the normalized distance (0.0 - 1.0) along the geometry
+    @return a new GEOSGeometry point at the given fraction
+
+    @throw GEOS-ERROR error in interpolation or wrong geometry type
+*/
+GEOSGeometry GEOSGeometry::interpolateNormalized(float fraction) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSInterpolateNormalized_r(ctx, g->getGeometry(), fraction);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "interpolateNormalized")) {
+            xsink->raiseException("GEOS-ERROR", "error in interpolateNormalized");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns the nearest points of this geometry and the given geometry
+/** @param other the other geometry
+    @return a list of two @ref GEOSCoordinate hashes representing the nearest points
+
+    @throw GEOS-ERROR error computing nearest points
+*/
+list<hash<GEOSCoordinate>> GEOSGeometry::nearestPoints(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSCoordSequence* cs = GEOSNearestPoints_r(ctx, g->getGeometry(), other->getGeometry());
+    if (!cs) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "nearestPoints")) {
+            xsink->raiseException("GEOS-ERROR", "error computing nearest points");
+        }
+        return QoreValue();
+    }
+
+    ReferenceHolder<QoreListNode> result(new QoreListNode(hashdeclGEOSCoordinate->getTypeInfo()), xsink);
+    unsigned int size;
+    GEOSCoordSeq_getSize_r(ctx, cs, &size);
+    for (unsigned int i = 0; i < size; ++i) {
+        double x, y;
+        GEOSCoordSeq_getX_r(ctx, cs, i, &x);
+        GEOSCoordSeq_getY_r(ctx, cs, i, &y);
+        ReferenceHolder<QoreHashNode> h(new QoreHashNode(hashdeclGEOSCoordinate, xsink), xsink);
+        h->setKeyValue("x", x, xsink);
+        h->setKeyValue("y", y, xsink);
+        // try to get Z coordinate
+        unsigned int dims;
+        GEOSCoordSeq_getDimensions_r(ctx, cs, &dims);
+        if (dims >= 3) {
+            double z;
+            GEOSCoordSeq_getZ_r(ctx, cs, i, &z);
+            h->setKeyValue("z", z, xsink);
+        }
+        result->push(h.release(), xsink);
+    }
+    GEOSCoordSeq_destroy_r(ctx, cs);
+    return result.release();
+}
+
+//! Computes a buffer area around this geometry
+/** @param width the buffer distance (positive or negative)
+    @param quadsegs the number of segments to approximate a quarter circle (default 8)
+    @return a new GEOSGeometry representing the buffer
+
+    @throw GEOS-ERROR error computing buffer
+*/
+GEOSGeometry GEOSGeometry::buffer(float width, int quadsegs = 8) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSBuffer_r(ctx, g->getGeometry(), width, quadsegs);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "buffer")) {
+            xsink->raiseException("GEOS-ERROR", "error computing buffer");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes the intersection of this geometry with another
+/** @param other the geometry to intersect with
+    @return a new GEOSGeometry representing the intersection
+
+    @throw GEOS-ERROR error computing intersection
+*/
+GEOSGeometry GEOSGeometry::intersection(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSIntersection_r(ctx, g->getGeometry(), other->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "intersection")) {
+            xsink->raiseException("GEOS-ERROR", "error computing intersection");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes the union of this geometry with another
+/** Named \c geomUnion() instead of \c union() to avoid C++ keyword conflict.
+
+    @param other the geometry to union with
+    @return a new GEOSGeometry representing the union
+
+    @throw GEOS-ERROR error computing union
+*/
+GEOSGeometry GEOSGeometry::geomUnion(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSUnion_r(ctx, g->getGeometry(), other->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "geomUnion")) {
+            xsink->raiseException("GEOS-ERROR", "error computing union");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes the difference of this geometry with another
+/** @param other the geometry to subtract
+    @return a new GEOSGeometry representing the difference
+
+    @throw GEOS-ERROR error computing difference
+*/
+GEOSGeometry GEOSGeometry::difference(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSDifference_r(ctx, g->getGeometry(), other->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "difference")) {
+            xsink->raiseException("GEOS-ERROR", "error computing difference");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes the symmetric difference of this geometry with another
+/** @param other the other geometry
+    @return a new GEOSGeometry representing the symmetric difference
+
+    @throw GEOS-ERROR error computing symmetric difference
+*/
+GEOSGeometry GEOSGeometry::symDifference(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSSymDifference_r(ctx, g->getGeometry(), other->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "symDifference")) {
+            xsink->raiseException("GEOS-ERROR", "error computing symmetric difference");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns the minimum bounding box (envelope) of this geometry
+/** @return a new GEOSGeometry representing the envelope
+
+    @throw GEOS-ERROR error computing envelope
+*/
+GEOSGeometry GEOSGeometry::envelope() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSEnvelope_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "envelope")) {
+            xsink->raiseException("GEOS-ERROR", "error computing envelope");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns the convex hull of this geometry
+/** @return a new GEOSGeometry representing the convex hull
+
+    @throw GEOS-ERROR error computing convex hull
+*/
+GEOSGeometry GEOSGeometry::convexHull() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSConvexHull_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "convexHull")) {
+            xsink->raiseException("GEOS-ERROR", "error computing convex hull");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns the centroid of this geometry as a point
+/** @return a new GEOSGeometry point at the centroid
+
+    @throw GEOS-ERROR error computing centroid
+*/
+GEOSGeometry GEOSGeometry::centroid() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSGetCentroid_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "centroid")) {
+            xsink->raiseException("GEOS-ERROR", "error computing centroid");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns the boundary of this geometry
+/** @return a new GEOSGeometry representing the boundary
+
+    @throw GEOS-ERROR error computing boundary
+*/
+GEOSGeometry GEOSGeometry::boundary() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSBoundary_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "boundary")) {
+            xsink->raiseException("GEOS-ERROR", "error computing boundary");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns the geometry type as a string
+/** @return the geometry type (e.g., "Point", "LineString", "Polygon", etc.)
+*/
+string GEOSGeometry::geometryType() [flags=RET_VALUE_ONLY] {
+    GEOSContextHandle_t ctx = geos_get_context();
+    char* type = GEOSGeomType_r(ctx, g->getGeometry());
+    if (!type) {
+        return QoreValue();
+    }
+    QoreStringNode* rv = new QoreStringNode(type);
+    GEOSFree_r(ctx, type);
+    return rv;
+}
+
+//! Returns the number of points in this geometry
+/** @return the number of coordinate points
+*/
+int GEOSGeometry::numPoints() [flags=RET_VALUE_ONLY] {
+    GEOSContextHandle_t ctx = geos_get_context();
+    return GEOSGetNumCoordinates_r(ctx, g->getGeometry());
+}
+
+//! Returns the number of sub-geometries (for geometry collections)
+/** @return the number of sub-geometries, or 1 for non-collection types
+*/
+int GEOSGeometry::numGeometries() [flags=RET_VALUE_ONLY] {
+    GEOSContextHandle_t ctx = geos_get_context();
+    return GEOSGetNumGeometries_r(ctx, g->getGeometry());
+}
+
+//! Tests whether this geometry is empty
+/** @return @ref True if the geometry has no coordinates
+*/
+bool GEOSGeometry::isEmpty() [flags=RET_VALUE_ONLY] {
+    GEOSContextHandle_t ctx = geos_get_context();
+    return (bool)GEOSisEmpty_r(ctx, g->getGeometry());
+}
+
+//! Tests whether this geometry is valid
+/** @return @ref True if the geometry is topologically valid
+*/
+bool GEOSGeometry::isValid() [flags=RET_VALUE_ONLY] {
+    GEOSContextHandle_t ctx = geos_get_context();
+    return (bool)GEOSisValid_r(ctx, g->getGeometry());
+}
+
+//! Tests whether this geometry is simple
+/** @return @ref True if the geometry is simple (has no self-intersections)
+*/
+bool GEOSGeometry::isSimple() [flags=RET_VALUE_ONLY] {
+    GEOSContextHandle_t ctx = geos_get_context();
+    return (bool)GEOSisSimple_r(ctx, g->getGeometry());
+}
+
+//! Returns the area of this geometry
+/** @return the area (0.0 for non-areal geometries)
+
+    @throw GEOS-ERROR error computing area
+*/
+float GEOSGeometry::area() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double area;
+    if (!GEOSArea_r(ctx, g->getGeometry(), &area)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "area")) {
+            xsink->raiseException("GEOS-ERROR", "error computing area");
+        }
+        return QoreValue();
+    }
+    return area;
+}
+
+//! Returns the length of this geometry
+/** @return the length (0.0 for non-lineal geometries)
+
+    @throw GEOS-ERROR error computing length
+*/
+float GEOSGeometry::length() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double len;
+    if (!GEOSLength_r(ctx, g->getGeometry(), &len)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "length")) {
+            xsink->raiseException("GEOS-ERROR", "error computing length");
+        }
+        return QoreValue();
+    }
+    return len;
+}
+
+//! Returns the SRID (Spatial Reference System Identifier) of this geometry
+/** @return the SRID
+*/
+int GEOSGeometry::getSRID() [flags=RET_VALUE_ONLY] {
+    GEOSContextHandle_t ctx = geos_get_context();
+    return GEOSGetSRID_r(ctx, g->getGeometry());
+}
+
+//! Sets the SRID (Spatial Reference System Identifier) of this geometry
+/** @param srid the SRID to set
+*/
+nothing GEOSGeometry::setSRID(int srid) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    GEOSSetSRID_r(ctx, g->getGeometry(), srid);
+}
+
+//! Returns the first coordinate of this geometry
+/** @return a @ref GEOSCoordinate hash, or @ref nothing if the geometry is empty
+
+    @throw GEOS-ERROR error getting coordinate
+*/
+*hash<GEOSCoordinate> GEOSGeometry::getCoordinate() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    const GEOSCoordSequence* cs = GEOSGeom_getCoordSeq_r(ctx, g->getGeometry());
+    if (!cs) {
+        check_geos_error(xsink, "GEOS-ERROR", "getCoordinate");
+        return QoreValue();
+    }
+    unsigned int size;
+    GEOSCoordSeq_getSize_r(ctx, cs, &size);
+    if (size == 0) {
+        return QoreValue();
+    }
+    double x, y;
+    GEOSCoordSeq_getX_r(ctx, cs, 0, &x);
+    GEOSCoordSeq_getY_r(ctx, cs, 0, &y);
+    ReferenceHolder<QoreHashNode> h(new QoreHashNode(hashdeclGEOSCoordinate, xsink), xsink);
+    h->setKeyValue("x", x, xsink);
+    h->setKeyValue("y", y, xsink);
+    unsigned int dims;
+    GEOSCoordSeq_getDimensions_r(ctx, cs, &dims);
+    if (dims >= 3) {
+        double z;
+        GEOSCoordSeq_getZ_r(ctx, cs, 0, &z);
+        h->setKeyValue("z", z, xsink);
+    }
+    return h.release();
+}
+
+//! Returns all coordinates of this geometry
+/** @return a list of @ref GEOSCoordinate hashes
+
+    @throw GEOS-ERROR error getting coordinates
+*/
+list<hash<GEOSCoordinate>> GEOSGeometry::getCoordinates() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    const GEOSCoordSequence* cs = GEOSGeom_getCoordSeq_r(ctx, g->getGeometry());
+    if (!cs) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getCoordinates")) {
+            xsink->raiseException("GEOS-ERROR", "error getting coordinate sequence");
+        }
+        return QoreValue();
+    }
+    unsigned int size;
+    GEOSCoordSeq_getSize_r(ctx, cs, &size);
+    unsigned int dims;
+    GEOSCoordSeq_getDimensions_r(ctx, cs, &dims);
+
+    ReferenceHolder<QoreListNode> result(new QoreListNode(hashdeclGEOSCoordinate->getTypeInfo()), xsink);
+    for (unsigned int i = 0; i < size; ++i) {
+        double x, y;
+        GEOSCoordSeq_getX_r(ctx, cs, i, &x);
+        GEOSCoordSeq_getY_r(ctx, cs, i, &y);
+        ReferenceHolder<QoreHashNode> h(new QoreHashNode(hashdeclGEOSCoordinate, xsink), xsink);
+        h->setKeyValue("x", x, xsink);
+        h->setKeyValue("y", y, xsink);
+        if (dims >= 3) {
+            double z;
+            GEOSCoordSeq_getZ_r(ctx, cs, i, &z);
+            h->setKeyValue("z", z, xsink);
+        }
+        result->push(h.release(), xsink);
+    }
+    return result.release();
+}
+
+//! Returns the Nth sub-geometry from a geometry collection
+/** The returned geometry is a clone (not a borrowed reference).
+
+    @param n the zero-based index of the sub-geometry
+    @return a new GEOSGeometry object
+
+    @throw GEOS-ERROR index out of range or error getting sub-geometry
+*/
+GEOSGeometry GEOSGeometry::getGeometryN(int n) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    int num = GEOSGetNumGeometries_r(ctx, g->getGeometry());
+    if (n < 0 || n >= num) {
+        xsink->raiseException("GEOS-ERROR", "geometry index %d out of range (0..%d)", (int)n, num - 1);
+        return QoreValue();
+    }
+    const GEOSGeometry* sub = GEOSGetGeometryN_r(ctx, g->getGeometry(), n);
+    if (!sub) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getGeometryN")) {
+            xsink->raiseException("GEOS-ERROR", "error getting sub-geometry at index %d", (int)n);
+        }
+        return QoreValue();
+    }
+    // clone the borrowed pointer since GEOS owns it
+    GEOSGeometry* clone = GEOSGeom_clone_r(ctx, sub);
+    if (!clone) {
+        xsink->raiseException("GEOS-ERROR", "error cloning sub-geometry");
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(clone));
+}
+
+//! Returns the WKT representation of this geometry
+/** @return the Well-Known Text string
+
+    @throw GEOS-ERROR error serializing to WKT
+*/
+string GEOSGeometry::toWKT() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSWKTWriter* writer = GEOSWKTWriter_create_r(ctx);
+    if (!writer) {
+        xsink->raiseException("GEOS-ERROR", "failed to create WKT writer");
+        return QoreValue();
+    }
+    GEOSWKTWriter_setTrim_r(ctx, writer, 1);
+    char* wkt = GEOSWKTWriter_write_r(ctx, writer, g->getGeometry());
+    GEOSWKTWriter_destroy_r(ctx, writer);
+    if (!wkt) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "toWKT")) {
+            xsink->raiseException("GEOS-ERROR", "error writing WKT");
+        }
+        return QoreValue();
+    }
+    QoreStringNode* rv = new QoreStringNode(wkt);
+    GEOSFree_r(ctx, wkt);
+    return rv;
+}
+
+//! Returns the WKB representation of this geometry
+/** @return the Well-Known Binary data
+
+    @throw GEOS-ERROR error serializing to WKB
+*/
+binary GEOSGeometry::toWKB() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSWKBWriter* writer = GEOSWKBWriter_create_r(ctx);
+    if (!writer) {
+        xsink->raiseException("GEOS-ERROR", "failed to create WKB writer");
+        return QoreValue();
+    }
+    size_t size;
+    unsigned char* wkb = GEOSWKBWriter_write_r(ctx, writer, g->getGeometry(), &size);
+    GEOSWKBWriter_destroy_r(ctx, writer);
+    if (!wkb) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "toWKB")) {
+            xsink->raiseException("GEOS-ERROR", "error writing WKB");
+        }
+        return QoreValue();
+    }
+    BinaryNode* rv = new BinaryNode;
+    rv->append(wkb, size);
+    GEOSFree_r(ctx, wkb);
+    return rv;
+}
+
+//! Creates a prepared geometry for fast repeated spatial queries
+/** @return a new GEOSPreparedGeometry object
+
+    @par Example:
+    @code{.py}
+GEOSPreparedGeometry pg = poly.prepare();
+for (int i = 0; i < points.size(); ++i) {
+    if (pg.contains(points[i])) {
+        # ...
+    }
+}
+    @endcode
+
+    @throw GEOS-ERROR error preparing geometry
+*/
+auto GEOSGeometry::prepare() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    const GEOSPreparedGeometry* pg = GEOSPrepare_r(ctx, g->getGeometry());
+    if (!pg) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepare")) {
+            xsink->raiseException("GEOS-ERROR", "error preparing geometry");
+        }
+        return QoreValue();
+    }
+    // hold a strong reference to the source QoreObject to prevent GC
+    self->ref();
+    return new QoreObject(QC_GEOSPREPAREDGEOMETRY, getProgram(),
+        new QoreGEOSPreparedGeometry(pg, self));
+}

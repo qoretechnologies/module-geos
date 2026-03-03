@@ -1,0 +1,253 @@
+/* -*- mode: c++; indent-tabs-mode: nil -*- */
+/*
+    ql_geos.qpp
+
+    Qore Programming Language
+
+    Copyright (C) 2026 Qore Technologies, s.r.o.
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+
+#include "geos-module.h"
+#include "QC_GEOSGeometry.h"
+
+#include <cstdlib>
+
+//! Coordinate hash structure
+/** Represents a single coordinate with X, Y, and optional Z components.
+
+    @since geos 1.0
+*/
+hashdecl GEOSCoordinate {
+    //! X coordinate
+    float x;
+    //! Y coordinate
+    float y;
+    //! Z coordinate (optional, for 3D geometries)
+    *float z;
+}
+
+//! GEOS version information hash
+/** Contains parsed version information for the GEOS library.
+
+    @since geos 1.0
+*/
+hashdecl GEOSVersionInfo {
+    //! Full version string (e.g., "3.12.0")
+    string version;
+    //! Major version number
+    int major;
+    //! Minor version number
+    int minor;
+    //! Patch version number
+    int patch;
+}
+
+/** @defgroup geos_functions GEOS Functions
+    Standalone functions for working with GEOS geometries.
+ */
+///@{
+namespace Qore::GEOS;
+
+//! Returns the GEOS library version string
+/** @return the version string (e.g., "3.12.0-CAPI-1.18.0")
+
+    @par Example:
+    @code{.py}
+string v = geos_version();
+    @endcode
+
+    @since geos 1.0
+*/
+string geos_version() [flags=CONSTANT] {
+    return new QoreStringNode(GEOSversion());
+}
+
+//! Returns detailed GEOS version information
+/** @return a @ref GEOSVersionInfo hash with parsed version components
+
+    @par Example:
+    @code{.py}
+hash<GEOSVersionInfo> info = get_geos_info();
+printf("GEOS %d.%d.%d\n", info.major, info.minor, info.patch);
+    @endcode
+
+    @since geos 1.0
+*/
+hash<GEOSVersionInfo> get_geos_info() [flags=RET_VALUE_ONLY] {
+    const char* ver = GEOSversion();
+    ReferenceHolder<QoreHashNode> h(new QoreHashNode(hashdeclGEOSVersionInfo, xsink), xsink);
+    h->setKeyValue("version", new QoreStringNode(ver), xsink);
+
+    // parse "major.minor.patch" from the version string
+    int major = 0, minor = 0, patch = 0;
+    if (ver) {
+        major = atoi(ver);
+        const char* p = strchr(ver, '.');
+        if (p) {
+            minor = atoi(p + 1);
+            p = strchr(p + 1, '.');
+            if (p) {
+                patch = atoi(p + 1);
+            }
+        }
+    }
+    h->setKeyValue("major", major, xsink);
+    h->setKeyValue("minor", minor, xsink);
+    h->setKeyValue("patch", patch, xsink);
+    return h.release();
+}
+
+//! Convenience function to parse a WKT string into a GEOSGeometry
+/** @param wkt the Well-Known Text string
+    @return a new GEOSGeometry object
+
+    @par Example:
+    @code{.py}
+GEOSGeometry geom = parse_wkt("POINT (1.0 2.0)");
+    @endcode
+
+    @throw GEOS-ERROR error parsing WKT string
+
+    @since geos 1.0
+*/
+GEOSGeometry parse_wkt(string wkt) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSWKTReader* reader = GEOSWKTReader_create_r(ctx);
+    if (!reader) {
+        xsink->raiseException("GEOS-ERROR", "failed to create WKT reader");
+        return QoreValue();
+    }
+    GEOSGeometry* geom = GEOSWKTReader_read_r(ctx, reader, wkt->c_str());
+    GEOSWKTReader_destroy_r(ctx, reader);
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "parse_wkt")) {
+            xsink->raiseException("GEOS-ERROR", "failed to parse WKT string");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(geom));
+}
+
+//! Convenience function to serialize a GEOSGeometry to a WKT string
+/** @param geom the geometry to serialize
+    @return the WKT string
+
+    @par Example:
+    @code{.py}
+string wkt = make_wkt(geom);
+    @endcode
+
+    @throw GEOS-ERROR error writing WKT
+
+    @since geos 1.0
+*/
+string make_wkt(GEOSGeometry[QoreGEOSGeometry] geom) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSWKTWriter* writer = GEOSWKTWriter_create_r(ctx);
+    if (!writer) {
+        xsink->raiseException("GEOS-ERROR", "failed to create WKT writer");
+        return QoreValue();
+    }
+    GEOSWKTWriter_setTrim_r(ctx, writer, 1);
+    char* wkt = GEOSWKTWriter_write_r(ctx, writer, geom->getGeometry());
+    GEOSWKTWriter_destroy_r(ctx, writer);
+    if (!wkt) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "make_wkt")) {
+            xsink->raiseException("GEOS-ERROR", "error writing WKT");
+        }
+        return QoreValue();
+    }
+    QoreStringNode* rv = new QoreStringNode(wkt);
+    GEOSFree_r(ctx, wkt);
+    return rv;
+}
+
+//! Convenience function to parse WKB binary data into a GEOSGeometry
+/** @param wkb the Well-Known Binary data
+    @return a new GEOSGeometry object
+
+    @par Example:
+    @code{.py}
+GEOSGeometry geom = parse_wkb(wkb_data);
+    @endcode
+
+    @throw GEOS-ERROR error parsing WKB data
+
+    @since geos 1.0
+*/
+GEOSGeometry parse_wkb(binary wkb) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSWKBReader* reader = GEOSWKBReader_create_r(ctx);
+    if (!reader) {
+        xsink->raiseException("GEOS-ERROR", "failed to create WKB reader");
+        return QoreValue();
+    }
+    GEOSGeometry* geom = GEOSWKBReader_read_r(ctx, reader,
+        static_cast<const unsigned char*>(wkb->getPtr()), wkb->size());
+    GEOSWKBReader_destroy_r(ctx, reader);
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "parse_wkb")) {
+            xsink->raiseException("GEOS-ERROR", "failed to parse WKB data");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(geom));
+}
+
+//! Convenience function to serialize a GEOSGeometry to WKB binary data
+/** @param geom the geometry to serialize
+    @return the WKB binary data
+
+    @par Example:
+    @code{.py}
+binary wkb = make_wkb(geom);
+    @endcode
+
+    @throw GEOS-ERROR error writing WKB
+
+    @since geos 1.0
+*/
+binary make_wkb(GEOSGeometry[QoreGEOSGeometry] geom) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSWKBWriter* writer = GEOSWKBWriter_create_r(ctx);
+    if (!writer) {
+        xsink->raiseException("GEOS-ERROR", "failed to create WKB writer");
+        return QoreValue();
+    }
+    size_t size;
+    unsigned char* wkb = GEOSWKBWriter_write_r(ctx, writer, geom->getGeometry(), &size);
+    GEOSWKBWriter_destroy_r(ctx, writer);
+    if (!wkb) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "make_wkb")) {
+            xsink->raiseException("GEOS-ERROR", "error writing WKB");
+        }
+        return QoreValue();
+    }
+    BinaryNode* rv = new BinaryNode;
+    rv->append(wkb, size);
+    GEOSFree_r(ctx, wkb);
+    return rv;
+}
+///@}
