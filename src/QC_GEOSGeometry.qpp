@@ -29,6 +29,47 @@
 #include "QC_GEOSPreparedGeometry.h"
 #include "QC_GEOSGeoJSONWriter.h"
 
+// Data passed to the transform_xy_trampoline callback
+struct TransformXYData {
+    const ResolvedCallReferenceNode* callback;
+    ExceptionSink* xsink;
+};
+
+// Trampoline function for GEOSGeom_transformXY_r
+static int transform_xy_trampoline(double* x, double* y, void* userdata) {
+    TransformXYData* data = static_cast<TransformXYData*>(userdata);
+    if (*data->xsink) {
+        return 0;  // already have an error
+    }
+
+    ReferenceHolder<QoreListNode> args(new QoreListNode(autoTypeInfo), data->xsink);
+    args->push(*x, data->xsink);
+    args->push(*y, data->xsink);
+
+    ValueHolder rv(data->callback->execValue(*args, data->xsink), data->xsink);
+    if (*data->xsink) {
+        return 0;
+    }
+
+    // expect a list with [new_x, new_y] or a hash with "x" and "y"
+    if (rv->getType() == NT_LIST) {
+        const QoreListNode* l = rv->get<const QoreListNode>();
+        if (l->size() >= 2) {
+            *x = l->retrieveEntry(0).getAsFloat();
+            *y = l->retrieveEntry(1).getAsFloat();
+            return 1;
+        }
+    } else if (rv->getType() == NT_HASH) {
+        const QoreHashNode* h = rv->get<const QoreHashNode>();
+        *x = h->getKeyValue("x").getAsFloat();
+        *y = h->getKeyValue("y").getAsFloat();
+        return 1;
+    }
+    data->xsink->raiseException("GEOS-ERROR",
+        "transformXY callback must return a list (x, y) or hash with 'x' and 'y' keys");
+    return 0;
+}
+
 //! Core geometry class wrapping the GEOS GEOSGeometry type
 /** This class provides the main interface for working with geometries in GEOS.
     Geometries can be created from WKT strings or WKB binary data, and support
@@ -1870,4 +1911,1144 @@ string GEOSGeometry::toGeoJSON(int indent = -1) {
     QoreStringNode* rv = new QoreStringNode(json);
     GEOSFree_r(ctx, json);
     return rv;
+}
+
+//! Computes the Hausdorff distance between this geometry and another
+/** The Hausdorff distance is a measure of how far two geometric shapes are
+    from being isometric (identical in shape). It is the greatest distance of
+    any point in one geometry to the nearest point in the other geometry.
+
+    @param other the geometry to compare with
+    @return the Hausdorff distance
+
+    @throw GEOS-ERROR error computing distance
+
+    @since geos 1.1
+*/
+float GEOSGeometry::hausdorffDistance(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double dist;
+    if (!GEOSHausdorffDistance_r(ctx, g->getGeometry(), other->getGeometry(), &dist)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "hausdorffDistance")) {
+            xsink->raiseException("GEOS-ERROR", "error computing Hausdorff distance");
+        }
+        return QoreValue();
+    }
+    return dist;
+}
+
+//! Computes the Hausdorff distance with densification
+/** Densification inserts extra points along line segments so that the discrete
+    Hausdorff distance is a closer approximation of the actual Hausdorff distance.
+
+    @param other the geometry to compare with
+    @param densifyFrac the fraction by which to densify each segment (0.0 - 1.0)
+    @return the densified Hausdorff distance
+
+    @throw GEOS-ERROR error computing distance
+
+    @since geos 1.1
+*/
+float GEOSGeometry::hausdorffDistanceDensify(GEOSGeometry[QoreGEOSGeometry] other, float densifyFrac) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double dist;
+    if (!GEOSHausdorffDistanceDensify_r(ctx, g->getGeometry(), other->getGeometry(),
+            densifyFrac, &dist)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "hausdorffDistanceDensify")) {
+            xsink->raiseException("GEOS-ERROR", "error computing densified Hausdorff distance");
+        }
+        return QoreValue();
+    }
+    return dist;
+}
+
+//! Computes the Frechet distance between this geometry and another
+/** The Frechet distance is a measure of similarity between curves that takes
+    into account the ordering of the points along the curves.
+
+    @param other the geometry to compare with
+    @return the Frechet distance
+
+    @throw GEOS-ERROR error computing distance
+
+    @since geos 1.1
+*/
+float GEOSGeometry::frechetDistance(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double dist;
+    if (!GEOSFrechetDistance_r(ctx, g->getGeometry(), other->getGeometry(), &dist)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "frechetDistance")) {
+            xsink->raiseException("GEOS-ERROR", "error computing Frechet distance");
+        }
+        return QoreValue();
+    }
+    return dist;
+}
+
+//! Computes the Frechet distance with densification
+/** @param other the geometry to compare with
+    @param densifyFrac the fraction by which to densify each segment (0.0 - 1.0)
+    @return the densified Frechet distance
+
+    @throw GEOS-ERROR error computing distance
+
+    @since geos 1.1
+*/
+float GEOSGeometry::frechetDistanceDensify(GEOSGeometry[QoreGEOSGeometry] other, float densifyFrac) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double dist;
+    if (!GEOSFrechetDistanceDensify_r(ctx, g->getGeometry(), other->getGeometry(),
+            densifyFrac, &dist)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "frechetDistanceDensify")) {
+            xsink->raiseException("GEOS-ERROR", "error computing densified Frechet distance");
+        }
+        return QoreValue();
+    }
+    return dist;
+}
+
+//! Tests whether the distance between this geometry and another is within a threshold
+/** This is more efficient than computing the exact distance and comparing, because
+    the computation can short-circuit as soon as the threshold is exceeded.
+
+    @param other the geometry to test
+    @param dist the distance threshold
+    @return @ref True if the geometries are within the given distance
+
+    @throw GEOS-ERROR error computing distance
+
+    @since geos 1.1
+*/
+bool GEOSGeometry::distanceWithin(GEOSGeometry[QoreGEOSGeometry] other, float dist) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSDistanceWithin_r(ctx, g->getGeometry(), other->getGeometry(), dist);
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "distanceWithin")) {
+            xsink->raiseException("GEOS-ERROR", "error in distanceWithin");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Computes the distance using a spatial index for repeated queries
+/** This method builds an internal index on the geometry for faster distance
+    computation. Useful when computing distances from one geometry to many others.
+
+    @param other the geometry to compute distance to
+    @return the distance between the closest points
+
+    @throw GEOS-ERROR error computing distance
+
+    @since geos 1.1
+*/
+float GEOSGeometry::distanceIndexed(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double dist;
+    if (!GEOSDistanceIndexed_r(ctx, g->getGeometry(), other->getGeometry(), &dist)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "distanceIndexed")) {
+            xsink->raiseException("GEOS-ERROR", "error computing indexed distance");
+        }
+        return QoreValue();
+    }
+    return dist;
+}
+
+//! Computes the union of all components of this geometry
+/** Unlike @ref geomUnion() which requires two geometries, this method dissolves
+    all components of a geometry collection (e.g., a MultiPolygon) into a single geometry.
+
+    @return a new GEOSGeometry representing the unary union
+
+    @par Example:
+    @code{.py}
+GEOSGeometry mp = parse_wkt("MULTIPOLYGON (((0 0, 5 0, 5 5, 0 5, 0 0)), ((3 3, 8 3, 8 8, 3 8, 3 3)))");
+GEOSGeometry dissolved = mp.unaryUnion();
+    @endcode
+
+    @throw GEOS-ERROR error computing union
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::unaryUnion() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSUnaryUnion_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "unaryUnion")) {
+            xsink->raiseException("GEOS-ERROR", "error computing unary union");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Merges a collection of linestrings into maximal-length linestrings
+/** If the input is not a collection of linestrings, a collection containing the
+    input is returned.
+
+    @return a new GEOSGeometry with merged linestrings
+
+    @par Example:
+    @code{.py}
+GEOSGeometry ml = parse_wkt("MULTILINESTRING ((0 0, 1 1), (1 1, 2 2))");
+GEOSGeometry merged = ml.lineMerge();
+    @endcode
+
+    @throw GEOS-ERROR error merging linestrings
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::lineMerge() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSLineMerge_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "lineMerge")) {
+            xsink->raiseException("GEOS-ERROR", "error merging linestrings");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Merges a collection of linestrings into maximal-length linestrings, preserving direction
+/** Like @ref lineMerge() but only merges linestrings whose endpoints match in direction.
+
+    @return a new GEOSGeometry with directed-merged linestrings
+
+    @par Example:
+    @code{.py}
+GEOSGeometry ml = parse_wkt("MULTILINESTRING ((0 0, 1 1), (1 1, 2 2))");
+GEOSGeometry merged = ml.lineMergeDirected();
+    @endcode
+
+    @throw GEOS-ERROR error merging linestrings
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::lineMergeDirected() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSLineMergeDirected_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "lineMergeDirected")) {
+            xsink->raiseException("GEOS-ERROR", "error merging directed linestrings");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Extracts a portion of a linestring between two fractional positions
+/** The start and end fractions are values between 0.0 (start of line) and
+    1.0 (end of line).
+
+    @param startFraction the fraction along the line for the start of the substring
+    @param endFraction the fraction along the line for the end of the substring
+    @return a new GEOSGeometry representing the substring
+
+    @par Example:
+    @code{.py}
+GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 0)");
+GEOSGeometry sub = line.lineSubstring(0.25, 0.75);
+    @endcode
+
+    @throw GEOS-ERROR error extracting line substring
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::lineSubstring(float startFraction, float endFraction) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSLineSubstring_r(ctx, g->getGeometry(), startFraction, endFraction);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "lineSubstring")) {
+            xsink->raiseException("GEOS-ERROR", "error extracting line substring");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Reverses the coordinate order of a geometry
+/** Returns a new geometry with the coordinates in reverse order.
+
+    @return a new GEOSGeometry with reversed coordinate order
+
+    @par Example:
+    @code{.py}
+GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 0)");
+GEOSGeometry rev = line.reverse();
+    @endcode
+
+    @throw GEOS-ERROR error reversing geometry
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::reverse() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSReverse_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "reverse")) {
+            xsink->raiseException("GEOS-ERROR", "error reversing geometry");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Nodes a collection of linestrings, inserting points at intersections
+/** Fully nodes a set of linestrings using the minimum number of nodes while
+    preserving all input node locations.
+
+    @return a new GEOSGeometry with noded linestrings
+
+    @par Example:
+    @code{.py}
+GEOSGeometry lines = parse_wkt("MULTILINESTRING ((0 0, 10 10), (0 10, 10 0))");
+GEOSGeometry noded = lines.node();
+    @endcode
+
+    @throw GEOS-ERROR error noding linestrings
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::node() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSNode_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "node")) {
+            xsink->raiseException("GEOS-ERROR", "error noding linestrings");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Clips a geometry to a rectangle
+/** Uses a fast short-circuit algorithm for clipping geometries to a rectangle.
+    The result geometry is not guaranteed to be valid.
+
+    @param xmin minimum X coordinate of the clip rectangle
+    @param ymin minimum Y coordinate of the clip rectangle
+    @param xmax maximum X coordinate of the clip rectangle
+    @param ymax maximum Y coordinate of the clip rectangle
+    @return a new GEOSGeometry clipped to the rectangle
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = parse_wkt("POLYGON ((-5 -5, 15 -5, 15 15, -5 15, -5 -5))");
+GEOSGeometry clipped = poly.clipByRect(0.0, 0.0, 10.0, 10.0);
+    @endcode
+
+    @throw GEOS-ERROR error clipping geometry
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::clipByRect(float xmin, float ymin, float xmax, float ymax) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSClipByRect_r(ctx, g->getGeometry(), xmin, ymin, xmax, ymax);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "clipByRect")) {
+            xsink->raiseException("GEOS-ERROR", "error clipping geometry to rectangle");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Snaps vertices and segments of this geometry to vertices of another geometry within tolerance
+/** Returns a new geometry with vertices snapped to the target geometry's vertices.
+
+    @param other the target geometry to snap to
+    @param tolerance the snapping tolerance
+    @return a new GEOSGeometry with snapped vertices
+
+    @par Example:
+    @code{.py}
+GEOSGeometry g1 = parse_wkt("LINESTRING (0 0, 10 0)");
+GEOSGeometry g2 = parse_wkt("POINT (0.5 0)");
+GEOSGeometry snapped = g1.snap(g2, 1.0);
+    @endcode
+
+    @throw GEOS-ERROR error snapping geometry
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::snap(GEOSGeometry[QoreGEOSGeometry] other, float tolerance) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSSnap_r(ctx, g->getGeometry(), other->getGeometry(), tolerance);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "snap")) {
+            xsink->raiseException("GEOS-ERROR", "error snapping geometry");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes a Delaunay triangulation of the vertices of this geometry
+/** @param tolerance the snapping tolerance for vertices (default 0.0)
+    @param onlyEdges if @ref True, return only the edges as a MultiLineString; if @ref False (default), return triangles as a GeometryCollection
+
+    @return a new GEOSGeometry with the triangulation result
+
+    @par Example:
+    @code{.py}
+GEOSGeometry pts = parse_wkt("MULTIPOINT ((0 0), (10 0), (5 10), (10 10))");
+GEOSGeometry triangles = pts.delaunayTriangulation();
+    @endcode
+
+    @throw GEOS-ERROR error computing Delaunay triangulation
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::delaunayTriangulation(float tolerance = 0.0, bool onlyEdges = False) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSDelaunayTriangulation_r(ctx, g->getGeometry(), tolerance,
+        onlyEdges ? 1 : 0);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "delaunayTriangulation")) {
+            xsink->raiseException("GEOS-ERROR", "error computing Delaunay triangulation");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes a constrained Delaunay triangulation of the geometry
+/** Unlike @ref delaunayTriangulation(), this method respects the edges of the input geometry
+    as constraints.
+
+    @return a new GEOSGeometry with the constrained triangulation
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+GEOSGeometry triangles = poly.constrainedDelaunayTriangulation();
+    @endcode
+
+    @throw GEOS-ERROR error computing constrained Delaunay triangulation
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::constrainedDelaunayTriangulation() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSConstrainedDelaunayTriangulation_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "constrainedDelaunayTriangulation")) {
+            xsink->raiseException("GEOS-ERROR", "error computing constrained Delaunay triangulation");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes the Voronoi diagram of the vertices of this geometry
+/** @param tolerance the snapping tolerance for vertices (default 0.0)
+    @param onlyEdges if @ref True, return only the edges as a MultiLineString; if @ref False (default), return polygons as a GeometryCollection
+
+    @return a new GEOSGeometry with the Voronoi diagram
+
+    @par Example:
+    @code{.py}
+GEOSGeometry pts = parse_wkt("MULTIPOINT ((0 0), (10 0), (5 10))");
+GEOSGeometry voronoi = pts.voronoiDiagram();
+    @endcode
+
+    @throw GEOS-ERROR error computing Voronoi diagram
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::voronoiDiagram(float tolerance = 0.0, bool onlyEdges = False) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSVoronoiDiagram_r(ctx, g->getGeometry(), nullptr, tolerance,
+        onlyEdges ? 1 : 0);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "voronoiDiagram")) {
+            xsink->raiseException("GEOS-ERROR", "error computing Voronoi diagram");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes a concave hull of the geometry
+/** The concave hull is a possibly concave geometry that contains all input vertices.
+    A ratio of 1.0 produces the convex hull, while smaller values produce more concave results.
+
+    @param ratio the concavity ratio (0.0 - 1.0)
+    @param allowHoles if @ref True, the result may contain holes (default @ref False)
+    @return a new GEOSGeometry representing the concave hull
+
+    @par Example:
+    @code{.py}
+GEOSGeometry pts = parse_wkt("MULTIPOINT ((0 0), (10 0), (5 10), (10 10), (0 10))");
+GEOSGeometry hull = pts.concaveHull(0.5);
+    @endcode
+
+    @throw GEOS-ERROR error computing concave hull
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::concaveHull(float ratio, bool allowHoles = False) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSConcaveHull_r(ctx, g->getGeometry(), ratio, allowHoles ? 1 : 0);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "concaveHull")) {
+            xsink->raiseException("GEOS-ERROR", "error computing concave hull");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes a concave hull of the geometry using an edge length threshold
+/** Similar to @ref concaveHull() but uses an absolute edge length rather than a ratio.
+
+    @param length the maximum edge length
+    @param allowHoles if @ref True, the result may contain holes (default @ref False)
+    @return a new GEOSGeometry representing the concave hull
+
+    @par Example:
+    @code{.py}
+GEOSGeometry pts = parse_wkt("MULTIPOINT ((0 0), (10 0), (5 10), (10 10), (0 10))");
+GEOSGeometry hull = pts.concaveHullByLength(5.0);
+    @endcode
+
+    @throw GEOS-ERROR error computing concave hull by length
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::concaveHullByLength(float length, bool allowHoles = False) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSConcaveHullByLength_r(ctx, g->getGeometry(), length,
+        allowHoles ? 1 : 0);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "concaveHullByLength")) {
+            xsink->raiseException("GEOS-ERROR", "error computing concave hull by length");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes a simplified polygon hull of a polygon geometry
+/** Simplifies a polygon by reducing vertices while maintaining validity.
+
+    @param isOuter if @ref True, simplify the outer hull; if @ref False, simplify the inner hull
+    @param vertexFraction the fraction of vertices to retain (0.0 - 1.0)
+    @return a new GEOSGeometry representing the simplified hull
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+GEOSGeometry simplified = poly.polygonHullSimplify(True, 1.0);
+    @endcode
+
+    @throw GEOS-ERROR error computing polygon hull simplification
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::polygonHullSimplify(bool isOuter, float vertexFraction) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSPolygonHullSimplify_r(ctx, g->getGeometry(), isOuter ? 1 : 0,
+        vertexFraction);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "polygonHullSimplify")) {
+            xsink->raiseException("GEOS-ERROR", "error computing polygon hull simplification");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes the maximum inscribed circle of this geometry
+/** Returns a 2-point LineString from the center of the inscribed circle to the nearest
+    point on the boundary.
+
+    @param tolerance the distance tolerance for the approximation
+
+    @return a new GEOSGeometry LineString with 2 points (center to boundary)
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+GEOSGeometry mic = poly.maximumInscribedCircle(0.01);
+    @endcode
+
+    @throw GEOS-ERROR error computing maximum inscribed circle
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::maximumInscribedCircle(float tolerance) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSMaximumInscribedCircle_r(ctx, g->getGeometry(), tolerance);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "maximumInscribedCircle")) {
+            xsink->raiseException("GEOS-ERROR", "error computing maximum inscribed circle");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes the largest empty circle within this geometry with respect to obstacle points
+/** Returns a 2-point LineString from the center of the largest empty circle to the nearest
+    obstacle point.
+
+    @param obstacles the obstacle geometry
+    @param tolerance the distance tolerance for the approximation
+
+    @return a new GEOSGeometry LineString with 2 points (center to nearest obstacle)
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+GEOSGeometry obstacles = parse_wkt("MULTIPOINT ((5 5))");
+GEOSGeometry lec = poly.largestEmptyCircle(obstacles, 0.01);
+    @endcode
+
+    @throw GEOS-ERROR error computing largest empty circle
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::largestEmptyCircle(GEOSGeometry[QoreGEOSGeometry] obstacles, float tolerance) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSLargestEmptyCircle_r(ctx, g->getGeometry(), obstacles->getGeometry(),
+        tolerance);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "largestEmptyCircle")) {
+            xsink->raiseException("GEOS-ERROR", "error computing largest empty circle");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes the minimum-area rotated rectangle that encloses this geometry
+/** @return a new GEOSGeometry Polygon representing the minimum rotated rectangle
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 5, 5 5, 5 10, 0 10, 0 0))");
+GEOSGeometry mrr = poly.minimumRotatedRectangle();
+    @endcode
+
+    @throw GEOS-ERROR error computing minimum rotated rectangle
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::minimumRotatedRectangle() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSMinimumRotatedRectangle_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "minimumRotatedRectangle")) {
+            xsink->raiseException("GEOS-ERROR", "error computing minimum rotated rectangle");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes the minimum width of this geometry
+/** Returns a LineString representing the minimum width of the geometry.
+
+    @return a new GEOSGeometry LineString representing the minimum width
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 5, 5 5, 5 10, 0 10, 0 0))");
+GEOSGeometry mw = poly.minimumWidth();
+    @endcode
+
+    @throw GEOS-ERROR error computing minimum width
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::minimumWidth() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSMinimumWidth_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "minimumWidth")) {
+            xsink->raiseException("GEOS-ERROR", "error computing minimum width");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes the minimum bounding circle of this geometry
+/** Returns a Polygon geometry approximating the minimum bounding circle.
+
+    @return a new GEOSGeometry Polygon representing the minimum bounding circle
+
+    @par Example:
+    @code{.py}
+GEOSGeometry triangle = parse_wkt("POLYGON ((0 0, 10 0, 5 8, 0 0))");
+GEOSGeometry mbc = triangle.minimumBoundingCircle();
+    @endcode
+
+    @throw GEOS-ERROR error computing minimum bounding circle
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::minimumBoundingCircle() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSMinimumBoundingCircle_r(ctx, g->getGeometry(), NULL, NULL);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "minimumBoundingCircle")) {
+            xsink->raiseException("GEOS-ERROR", "error computing minimum bounding circle");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes the minimum clearance of this geometry
+/** The minimum clearance is the smallest distance by which a vertex of the geometry
+    could be moved to produce an invalid geometry.
+
+    @return the minimum clearance distance
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+float mc = poly.minimumClearance();
+    @endcode
+
+    @throw GEOS-ERROR error computing minimum clearance
+
+    @since geos 1.1
+*/
+float GEOSGeometry::minimumClearance() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double val;
+    if (GEOSMinimumClearance_r(ctx, g->getGeometry(), &val)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "minimumClearance")) {
+            xsink->raiseException("GEOS-ERROR", "error computing minimum clearance");
+        }
+        return QoreValue();
+    }
+    return val;
+}
+
+//! Computes the minimum clearance line of this geometry
+/** Returns a LineString representing the minimum clearance of the geometry.
+    The minimum clearance is the smallest distance by which a vertex could be moved
+    to produce an invalid geometry.
+
+    @return a new GEOSGeometry LineString representing the minimum clearance line
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+GEOSGeometry mcl = poly.minimumClearanceLine();
+    @endcode
+
+    @throw GEOS-ERROR error computing minimum clearance line
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::minimumClearanceLine() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSMinimumClearanceLine_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "minimumClearanceLine")) {
+            xsink->raiseException("GEOS-ERROR", "error computing minimum clearance line");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Builds a polygonal geometry from linework in the input
+/** Takes a geometry containing linework (such as a MultiLineString) and attempts to
+    build a polygon from the contained line segments.
+
+    @return a new GEOSGeometry polygon or multipolygon built from the linework
+
+    @par Example:
+    @code{.py}
+GEOSGeometry linework = parse_wkt(
+    "MULTILINESTRING ((0 0, 10 0), (10 0, 10 10), (10 10, 0 10), (0 10, 0 0))");
+GEOSGeometry area = linework.buildArea();
+printf("area: %f\n", area.area());
+    @endcode
+
+    @throw GEOS-ERROR error building area from linework
+
+    @since geos 1.2
+*/
+GEOSGeometry GEOSGeometry::buildArea() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSBuildArea_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "buildArea")) {
+            xsink->raiseException("GEOS-ERROR", "error building area from linework");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns a new geometry with coordinates snapped to the given grid size
+/** Creates a new geometry with precision reduced to the given grid size.
+    The original geometry is not modified.
+
+    @param gridSize the grid cell size to snap coordinates to (0 means full precision)
+    @param flags optional flags controlling precision reduction behavior (default 0)
+
+    @return a new GEOSGeometry with snapped coordinates
+
+    @par Example:
+    @code{.py}
+GEOSGeometry pt = parse_wkt("POINT (1.123456789 2.987654321)");
+GEOSGeometry snapped = pt.setPrecision(0.01);
+printf("precision: %f\n", snapped.getPrecision());
+    @endcode
+
+    @throw GEOS-ERROR error setting precision
+
+    @since geos 1.2
+*/
+GEOSGeometry GEOSGeometry::setPrecision(float gridSize, int flags = 0) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSGeom_setPrecision_r(ctx, g->getGeometry(), gridSize, flags);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "setPrecision")) {
+            xsink->raiseException("GEOS-ERROR", "error setting geometry precision");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns the precision grid size of the geometry
+/** Returns the grid size used for precision reduction, or 0 if full precision.
+
+    @return the precision grid size
+
+    @par Example:
+    @code{.py}
+GEOSGeometry pt = parse_wkt("POINT (1.0 2.0)");
+GEOSGeometry snapped = pt.setPrecision(0.01);
+float prec = snapped.getPrecision();
+printf("precision: %f\n", prec);
+    @endcode
+
+    @since geos 1.2
+*/
+float GEOSGeometry::getPrecision() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    return GEOSGeom_getPrecision_r(ctx, g->getGeometry());
+}
+
+//! Transforms coordinates of a geometry using a callback function
+/** Creates a new geometry by applying a coordinate transformation callback
+    to every coordinate in the geometry. The callback receives x and y values
+    and must return the transformed coordinates as either a list (x, y) or
+    a hash with "x" and "y" keys.
+
+    @param callback a closure or call reference that takes (float x, float y) and
+           returns a list (new_x, new_y) or hash ("x": new_x, "y": new_y)
+
+    @return a new GEOSGeometry with transformed coordinates
+
+    @par Example:
+    @code{.py}
+# translate a point by (10, 20)
+GEOSGeometry pt = parse_wkt("POINT (3 4)");
+GEOSGeometry shifted = pt.transformXY(sub (float x, float y) { return (x + 10, y + 20); });
+printf("shifted: %s\n", shifted.toWKT());
+
+# scale a polygon
+GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+GEOSGeometry scaled = poly.transformXY(sub (float x, float y) { return {"x": x * 2, "y": y * 2}; });
+printf("scaled area: %f\n", scaled.area());
+    @endcode
+
+    @throw GEOS-ERROR error in coordinate transformation or invalid callback return value
+
+    @since geos 1.2
+*/
+GEOSGeometry GEOSGeometry::transformXY(code callback) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+
+    TransformXYData tdata;
+    tdata.callback = callback;
+    tdata.xsink = xsink;
+
+    GEOSGeometry* result = GEOSGeom_transformXY_r(ctx, g->getGeometry(), transform_xy_trampoline, &tdata);
+    if (!result) {
+        if (!*xsink) {
+            if (!check_geos_error(xsink, "GEOS-ERROR", "transformXY")) {
+                xsink->raiseException("GEOS-ERROR", "error in coordinate transformation");
+            }
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes the union of a coverage (collection of non-overlapping polygons)
+/** This is an optimized union algorithm for coverages (collections of polygons
+    that do not overlap). It is much faster than the standard union for valid
+    coverages.
+
+    @return a new GEOSGeometry representing the union of the coverage
+
+    @par Example:
+    @code{.py}
+GEOSGeometry coverage = parse_wkt(
+    "GEOMETRYCOLLECTION ("
+    + "POLYGON ((0 0, 5 0, 5 5, 0 5, 0 0)), "
+    + "POLYGON ((5 0, 10 0, 10 5, 5 5, 5 0)))");
+GEOSGeometry result = coverage.coverageUnion();
+    @endcode
+
+    @throw GEOS-ERROR error computing coverage union
+
+    @since geos 1.3
+*/
+GEOSGeometry GEOSGeometry::coverageUnion() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSCoverageUnion_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "coverageUnion")) {
+            xsink->raiseException("GEOS-ERROR", "error computing coverage union");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Simplifies a coverage using the Visvalingam-Whyatt algorithm
+/** Simplifies the edges of a polygonal coverage while preserving the topology
+    of the coverage. Shared edges are simplified consistently.
+
+    @param tolerance the simplification tolerance
+    @param preserveBoundary if @ref True (default), the boundary of the coverage
+           is preserved; if @ref False, the boundary may be simplified
+
+    @return a new GEOSGeometry collection with simplified polygons
+
+    @par Example:
+    @code{.py}
+GEOSGeometry simplified = coverage.coverageSimplifyVW(1.0);
+GEOSGeometry simplified_no_boundary = coverage.coverageSimplifyVW(1.0, False);
+    @endcode
+
+    @throw GEOS-ERROR error simplifying coverage
+
+    @since geos 1.3
+*/
+GEOSGeometry GEOSGeometry::coverageSimplifyVW(float tolerance, bool preserveBoundary = True) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSCoverageSimplifyVW_r(ctx, g->getGeometry(), tolerance,
+        preserveBoundary ? 1 : 0);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "coverageSimplifyVW")) {
+            xsink->raiseException("GEOS-ERROR", "error simplifying coverage");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Validates a polygonal coverage
+/** Checks whether the input geometry is a valid polygonal coverage, returning
+    a geometry indicating any invalid locations found with the given gap width
+    tolerance.
+
+    @param gapWidth the maximum gap width to tolerate (0.0 for strict validation)
+
+    @return a geometry indicating invalid locations, or an empty geometry if the
+            coverage is valid
+
+    @par Example:
+    @code{.py}
+GEOSGeometry result = coverage.coverageIsValid(0.0);
+if (result.isEmpty()) {
+    printf("coverage is valid\n");
+}
+    @endcode
+
+    @throw GEOS-ERROR error validating coverage
+
+    @since geos 1.3
+*/
+GEOSGeometry GEOSGeometry::coverageIsValid(float gapWidth = 0.0) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* output = nullptr;
+    int rv = GEOSCoverageIsValid_r(ctx, g->getGeometry(), gapWidth, &output);
+    if (rv == 0) {
+        if (output) {
+            GEOSGeom_destroy_r(ctx, output);
+        }
+        if (!check_geos_error(xsink, "GEOS-ERROR", "coverageIsValid")) {
+            xsink->raiseException("GEOS-ERROR", "error validating coverage");
+        }
+        return QoreValue();
+    }
+    if (!output) {
+        xsink->raiseException("GEOS-ERROR", "coverageIsValid returned no output geometry");
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(output));
+}
+
+//! Extracts the unique points from a geometry
+/** Returns a MultiPoint containing the unique points of the input geometry.
+
+    @return a new GEOSGeometry MultiPoint with unique points
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+GEOSGeometry unique = poly.extractUniquePoints();
+# unique is a MultiPoint with 4 points (closing point removed)
+    @endcode
+
+    @throw GEOS-ERROR error extracting unique points
+
+    @since geos 1.3
+*/
+GEOSGeometry GEOSGeometry::extractUniquePoints() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSGeom_extractUniquePoints_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "extractUniquePoints")) {
+            xsink->raiseException("GEOS-ERROR", "error extracting unique points");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns the shared paths between this geometry and another
+/** Finds the paths (line segments) that are shared between two linear geometries.
+    Returns a GeometryCollection with two elements: shared paths with the same
+    direction, and shared paths with the opposite direction.
+
+    @param other the other geometry
+    @return a GeometryCollection with shared paths
+
+    @par Example:
+    @code{.py}
+GEOSGeometry line1 = parse_wkt("LINESTRING (0 0, 10 0, 10 10)");
+GEOSGeometry line2 = parse_wkt("LINESTRING (0 0, 10 0)");
+GEOSGeometry shared = line1.sharedPaths(line2);
+    @endcode
+
+    @throw GEOS-ERROR error computing shared paths
+
+    @since geos 1.3
+*/
+GEOSGeometry GEOSGeometry::sharedPaths(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSSharedPaths_r(ctx, g->getGeometry(), other->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "sharedPaths")) {
+            xsink->raiseException("GEOS-ERROR", "error computing shared paths");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Removes repeated (consecutive duplicate) points from a geometry
+/** Returns a new geometry with consecutive duplicate points removed.
+
+    @param tolerance the distance tolerance for considering points as duplicates
+           (0.0 means exact duplicates only)
+
+    @return a new GEOSGeometry with repeated points removed
+
+    @par Example:
+    @code{.py}
+GEOSGeometry line = parse_wkt("LINESTRING (0 0, 0 0, 5 5, 5 5, 10 10)");
+GEOSGeometry deduped = line.removeRepeatedPoints(0.0);
+# deduped has 3 points
+    @endcode
+
+    @throw GEOS-ERROR error removing repeated points
+
+    @since geos 1.3
+*/
+GEOSGeometry GEOSGeometry::removeRepeatedPoints(float tolerance) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSRemoveRepeatedPoints_r(ctx, g->getGeometry(), tolerance);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "removeRepeatedPoints")) {
+            xsink->raiseException("GEOS-ERROR", "error removing repeated points");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Densifies a geometry by adding points along the line segments
+/** Returns a new geometry with additional points added so that no segment
+    exceeds the given maximum segment length.
+
+    @param tolerance the maximum distance between points in the output
+
+    @return a new GEOSGeometry with densified segments
+
+    @par Example:
+    @code{.py}
+GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 0)");
+GEOSGeometry dense = line.densify(2.0);
+# dense has 6 points: (0,0), (2,0), (4,0), (6,0), (8,0), (10,0)
+    @endcode
+
+    @throw GEOS-ERROR error densifying geometry
+
+    @since geos 1.3
+*/
+GEOSGeometry GEOSGeometry::densify(float tolerance) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSDensify_r(ctx, g->getGeometry(), tolerance);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "densify")) {
+            xsink->raiseException("GEOS-ERROR", "error densifying geometry");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
 }

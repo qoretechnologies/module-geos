@@ -31,6 +31,8 @@
 #include "QC_GEOSGeoJSONWriter.h"
 
 #include <cstdlib>
+#include <vector>
+#include <climits>
 
 //! Coordinate hash structure
 /** Represents a single coordinate with X, Y, and optional Z components.
@@ -746,5 +748,210 @@ GEOSGeometry geos_create_rectangle(float xmin, float ymin, float xmax, float yma
         return QoreValue();
     }
     return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(geom));
+}
+
+//! Creates polygons from a list of linework geometries
+/** Takes a list of GEOSGeometry objects representing linework (typically LineStrings)
+    and attempts to polygonize them, creating polygons from the closed rings formed
+    by the input lines.
+
+    @param geoms a list of GEOSGeometry objects representing linework
+
+    @return a new GEOSGeometry collection of polygons formed from the input linework
+
+    @par Example:
+    @code{.py}
+auto lines = (
+    parse_wkt("LINESTRING (0 0, 10 0)"),
+    parse_wkt("LINESTRING (10 0, 10 10)"),
+    parse_wkt("LINESTRING (10 10, 0 10)"),
+    parse_wkt("LINESTRING (0 10, 0 0)"),
+);
+GEOSGeometry polys = geos_polygonize(lines);
+printf("num polygons: %d\n", polys.numGeometries());
+    @endcode
+
+    @throw GEOS-ERROR error polygonizing geometries or invalid input
+
+    @since geos 1.2
+*/
+GEOSGeometry geos_polygonize(list geoms) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+
+    size_t ngeoms = geoms->size();
+    GEOSGeometry** geos_geoms = new GEOSGeometry*[ngeoms];
+    for (size_t i = 0; i < ngeoms; ++i) {
+        if (!(i % 100) && qore_check_cancel(xsink)) {
+            for (size_t j = 0; j < i; ++j) {
+                GEOSGeom_destroy_r(ctx, geos_geoms[j]);
+            }
+            delete[] geos_geoms;
+            return QoreValue();
+        }
+        QoreObject* obj = geoms->retrieveEntry(i).get<QoreObject>();
+        QoreGEOSGeometry* qg = static_cast<QoreGEOSGeometry*>(
+            obj->getReferencedPrivateData(CID_GEOSGEOMETRY, xsink));
+        if (!qg) {
+            for (size_t j = 0; j < i; ++j) {
+                GEOSGeom_destroy_r(ctx, geos_geoms[j]);
+            }
+            delete[] geos_geoms;
+            if (!*xsink) {
+                xsink->raiseException("GEOS-ERROR", "element %zu is not a GEOSGeometry", i);
+            }
+            return QoreValue();
+        }
+        geos_geoms[i] = GEOSGeom_clone_r(ctx, qg->getGeometry());
+        qg->deref(xsink);
+        if (!geos_geoms[i]) {
+            for (size_t j = 0; j < i; ++j) {
+                GEOSGeom_destroy_r(ctx, geos_geoms[j]);
+            }
+            delete[] geos_geoms;
+            xsink->raiseException("GEOS-ERROR", "failed to clone geometry %zu", i);
+            return QoreValue();
+        }
+    }
+
+    GEOSGeometry* result = GEOSPolygonize_r(ctx, geos_geoms, ngeoms);
+    // GEOSPolygonize_r does not take ownership; free cloned geometries
+    for (size_t i = 0; i < ngeoms; ++i) {
+        GEOSGeom_destroy_r(ctx, geos_geoms[i]);
+    }
+    delete[] geos_geoms;
+
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "geos_polygonize")) {
+            xsink->raiseException("GEOS-ERROR", "failed to polygonize geometries");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Performs DBSCAN clustering on a geometry collection
+/** Takes a geometry collection and clusters the component geometries using the
+    DBSCAN algorithm with the given distance threshold and minimum points.
+
+    @param geom the geometry collection to cluster
+    @param eps the distance threshold for clustering
+    @param minPoints the minimum number of points to form a cluster
+
+    @return a hash with keys:
+    - \c numClusters (int): the number of clusters found
+    - \c assignments (list<int>): cluster index for each input geometry (-1 means noise)
+
+    @par Example:
+    @code{.py}
+GEOSGeometry points = parse_wkt("MULTIPOINT ((0 0), (1 0), (0 1), (10 10), (11 10))");
+hash<auto> result = geos_cluster_dbscan(points, 3.0, 2);
+printf("clusters: %d\n", result.numClusters);
+printf("assignments: %y\n", result.assignments);
+    @endcode
+
+    @throw GEOS-ERROR error in DBSCAN clustering
+
+    @since geos 1.3
+*/
+hash<auto> geos_cluster_dbscan(GEOSGeometry[QoreGEOSGeometry] geom, float eps, int minPoints) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSClusterInfo* info = GEOSClusterDBSCAN_r(ctx, geom->getGeometry(), eps, minPoints);
+    if (!info) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "geos_cluster_dbscan")) {
+            xsink->raiseException("GEOS-ERROR", "error in DBSCAN clustering");
+        }
+        return QoreValue();
+    }
+    size_t numClusters = GEOSClusterInfo_getNumClusters_r(ctx, info);
+    int numGeoms = GEOSGetNumGeometries_r(ctx, geom->getGeometry());
+
+    size_t* assignments = GEOSClusterInfo_getClustersForInputs_r(ctx, info);
+
+    ReferenceHolder<QoreListNode> assign_list(new QoreListNode(bigIntTypeInfo), xsink);
+    for (int i = 0; i < numGeoms; ++i) {
+        // SIZE_MAX means noise (-1 in our convention)
+        if (assignments[i] == SIZE_MAX) {
+            assign_list->push(-1, xsink);
+        } else {
+            assign_list->push((int64)assignments[i], xsink);
+        }
+    }
+    GEOSFree_r(ctx, assignments);
+    GEOSClusterInfo_destroy_r(ctx, info);
+
+    ReferenceHolder<QoreHashNode> h(new QoreHashNode(autoTypeInfo), xsink);
+    h->setKeyValue("numClusters", (int64)numClusters, xsink);
+    h->setKeyValue("assignments", assign_list.release(), xsink);
+    return h.release();
+}
+
+//! Computes the orientation index of a point relative to a directed line
+/** Returns whether point P lies to the left of, to the right of, or on the
+    directed line from A to B.
+
+    @param ax the X coordinate of point A
+    @param ay the Y coordinate of point A
+    @param bx the X coordinate of point B
+    @param by the Y coordinate of point B
+    @param px the X coordinate of point P
+    @param py the Y coordinate of point P
+
+    @return -1 if P is to the right of A-B, 0 if collinear, 1 if to the left
+
+    @par Example:
+    @code{.py}
+int oi = geos_orientation_index(0.0, 0.0, 10.0, 0.0, 5.0, 5.0);
+# oi == 1 (left)
+    @endcode
+
+    @since geos 1.3
+*/
+int geos_orientation_index(float ax, float ay, float bx, float by, float px, float py) [flags=CONSTANT] {
+    GEOSContextHandle_t ctx = geos_get_context();
+    return GEOSOrientationIndex_r(ctx, ax, ay, bx, by, px, py);
+}
+
+//! Computes the intersection point of two line segments
+/** Computes the intersection point of the line segment from (ax, ay) to (bx, by)
+    and the line segment from (cx, cy) to (dx, dy).
+
+    @param ax the X coordinate of the first endpoint of segment 1
+    @param ay the Y coordinate of the first endpoint of segment 1
+    @param bx the X coordinate of the second endpoint of segment 1
+    @param by the Y coordinate of the second endpoint of segment 1
+    @param cx the X coordinate of the first endpoint of segment 2
+    @param cy the Y coordinate of the first endpoint of segment 2
+    @param dx the X coordinate of the second endpoint of segment 2
+    @param dy the Y coordinate of the second endpoint of segment 2
+
+    @return a @ref GEOSCoordinate hash with the intersection point
+
+    @par Example:
+    @code{.py}
+hash<GEOSCoordinate> pt = geos_segment_intersection(0, 0, 10, 10, 0, 10, 10, 0);
+# pt.x == 5.0, pt.y == 5.0
+    @endcode
+
+    @throw GEOS-ERROR no intersection or error computing intersection
+
+    @since geos 1.3
+*/
+hash<GEOSCoordinate> geos_segment_intersection(float ax, float ay, float bx, float by, float cx, float cy, float dx, float dy) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double rx, ry;
+    int rv = GEOSSegmentIntersection_r(ctx, ax, ay, bx, by, cx, cy, dx, dy, &rx, &ry);
+    if (rv == 0) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "geos_segment_intersection")) {
+            xsink->raiseException("GEOS-ERROR", "no intersection or error computing segment intersection");
+        }
+        return QoreValue();
+    }
+    ReferenceHolder<QoreHashNode> h(new QoreHashNode(hashdeclGEOSCoordinate, xsink), xsink);
+    h->setKeyValue("x", rx, xsink);
+    h->setKeyValue("y", ry, xsink);
+    return h.release();
 }
 ///@}

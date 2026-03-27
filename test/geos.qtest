@@ -43,6 +43,16 @@ public class GeosTest inherits QUnit::Test {
         addTestCase("normalize and equalsExact", \normalizeEqualsExactTests());
         addTestCase("polygon decomposition", \polygonDecompositionTests());
         addTestCase("linestring point access", \linestringPointAccessTests());
+        addTestCase("distance metrics and unary union", \distanceMetricsUnaryUnionTests());
+        addTestCase("line operations", \lineOperationTests());
+        addTestCase("triangulation and hull", \triangulationHullTests());
+        addTestCase("prepared geometry extended", \preparedGeometryExtendedTests());
+        addTestCase("advanced geometric analysis", \advancedGeometricAnalysisTests());
+        addTestCase("polygonize and precision", \polygonizePrecisionTests());
+        addTestCase("coordinate transformation", \coordinateTransformTests());
+        addTestCase("clustering", \clusteringTests());
+        addTestCase("coverage operations", \coverageOperationTests());
+        addTestCase("misc utilities", \miscUtilityTests());
 
         set_return_value(main());
     }
@@ -1385,6 +1395,441 @@ public class GeosTest inherits QUnit::Test {
         assertThrows("GEOS-ERROR", sub() {
             poly_holes.getInteriorRingN(-1);
         }, NOTHING, "getInteriorRingN negative throws");
+    }
+
+    distanceMetricsUnaryUnionTests() {
+        # hausdorffDistance: two parallel lines
+        GEOSGeometry line1 = parse_wkt("LINESTRING (0 0, 10 0)");
+        GEOSGeometry line2 = parse_wkt("LINESTRING (0 5, 10 5)");
+        assertFloatEq(5.0, line1.hausdorffDistance(line2), "hausdorff parallel lines");
+
+        # hausdorffDistance: same geometry = 0
+        assertFloatEq(0.0, line1.hausdorffDistance(line1), "hausdorff same geometry");
+
+        # hausdorffDistanceDensify
+        float hd_dense = line1.hausdorffDistanceDensify(line2, 0.5);
+        assertFloatEq(5.0, hd_dense, "hausdorff densified parallel lines");
+
+        # frechetDistance: same two parallel lines
+        float fd = line1.frechetDistance(line2);
+        assertFloatEq(5.0, fd, "frechet parallel lines");
+
+        # frechetDistanceDensify
+        float fd_dense = line1.frechetDistanceDensify(line2, 0.5);
+        assertFloatEq(5.0, fd_dense, "frechet densified parallel lines");
+
+        # frechetDistance: direction matters (unlike Hausdorff)
+        GEOSGeometry line_fwd = parse_wkt("LINESTRING (0 0, 10 0)");
+        GEOSGeometry line_rev = parse_wkt("LINESTRING (10 5, 0 5)");
+        float fd_rev = line_fwd.frechetDistance(line_rev);
+        # Frechet distance should be larger when curves go in opposite directions
+        assertGt(5.0, fd_rev, "frechet opposite direction > parallel");
+
+        # distanceWithin: within threshold
+        GEOSGeometry pt1 = parse_wkt("POINT (0 0)");
+        GEOSGeometry pt2 = parse_wkt("POINT (3 4)");
+        assertTrue(pt1.distanceWithin(pt2, 6.0), "distanceWithin 5 < 6");
+        assertTrue(pt1.distanceWithin(pt2, 5.0), "distanceWithin 5 <= 5");
+        assertFalse(pt1.distanceWithin(pt2, 4.0), "distanceWithin 5 > 4");
+
+        # distanceIndexed: same result as distance()
+        float d_idx = pt1.distanceIndexed(pt2);
+        float d_std = pt1.distance(pt2);
+        assertFloatEq(d_std, d_idx, "distanceIndexed matches distance");
+
+        # unaryUnion: dissolve overlapping multipolygon
+        GEOSGeometry mp = parse_wkt(
+            "MULTIPOLYGON (((0 0, 5 0, 5 5, 0 5, 0 0)), ((3 3, 8 3, 8 8, 3 8, 3 3)))");
+        GEOSGeometry dissolved = mp.unaryUnion();
+        assertTrue(dissolved.isValid(), "unaryUnion produces valid geometry");
+        assertEq("Polygon", dissolved.geometryType(), "unaryUnion dissolves to single polygon");
+        # area should be union area (25 + 25 - 4 = 46)
+        assertFloatEq(46.0, dissolved.area(), "unaryUnion area");
+
+        # unaryUnion on single geometry returns equivalent
+        GEOSGeometry single = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        GEOSGeometry single_union = single.unaryUnion();
+        assertTrue(single.equals(single_union), "unaryUnion on single preserves geometry");
+
+        # unaryUnion on non-overlapping multipolygon
+        GEOSGeometry mp_disjoint = parse_wkt(
+            "MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)), ((10 10, 11 10, 11 11, 10 11, 10 10)))");
+        GEOSGeometry union_disjoint = mp_disjoint.unaryUnion();
+        assertTrue(union_disjoint.isValid(), "unaryUnion disjoint valid");
+        assertEq("MultiPolygon", union_disjoint.geometryType(), "unaryUnion disjoint stays multi");
+    }
+
+    lineOperationTests() {
+        # lineMerge: connected multi-linestring merges into fewer sub-geometries
+        GEOSGeometry ml = parse_wkt(
+            "MULTILINESTRING ((0 0, 1 1), (1 1, 2 2), (3 3, 4 4))");
+        GEOSGeometry merged = ml.lineMerge();
+        assertGt(0, merged.numGeometries(), "lineMerge produces geometry");
+        assertTrue(merged.numGeometries() < ml.numGeometries(),
+            "lineMerge reduces sub-geometries");
+
+        # lineMergeDirected: directed connected lines merge
+        GEOSGeometry ml_dir = parse_wkt(
+            "MULTILINESTRING ((0 0, 1 1), (1 1, 2 2))");
+        GEOSGeometry merged_dir = ml_dir.lineMergeDirected();
+        assertGt(0, merged_dir.numGeometries(), "lineMergeDirected produces geometry");
+        assertTrue(merged_dir.numGeometries() <= ml_dir.numGeometries(),
+            "lineMergeDirected merges directed lines");
+
+        # lineSubstring: extract middle portion
+        GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 0)");
+        GEOSGeometry substr = line.lineSubstring(0.25, 0.75);
+        assertEq("LineString", substr.geometryType(), "lineSubstring type");
+        float substr_len = substr.length();
+        float full_len = line.length();
+        assertTrue(substr_len < full_len, "lineSubstring shorter than original");
+        assertFloatEq(5.0, substr_len, "lineSubstring 0.25-0.75 of length 10 = 5");
+
+        # lineSubstring: full range returns equivalent length
+        GEOSGeometry substr_full = line.lineSubstring(0.0, 1.0);
+        assertFloatEq(full_len, substr_full.length(), "lineSubstring 0.0-1.0 same length");
+
+        # reverse: start and end points swap
+        GEOSGeometry line2 = parse_wkt("LINESTRING (1 2, 3 4, 5 6)");
+        GEOSGeometry rev = line2.reverse();
+        hash<GEOSCoordinate> orig_start = line2.getStartPoint().getCoordinate();
+        hash<GEOSCoordinate> orig_end = line2.getEndPoint().getCoordinate();
+        hash<GEOSCoordinate> rev_start = rev.getStartPoint().getCoordinate();
+        hash<GEOSCoordinate> rev_end = rev.getEndPoint().getCoordinate();
+        assertFloatEq(orig_start.x, rev_end.x, "reverse swaps start/end x");
+        assertFloatEq(orig_start.y, rev_end.y, "reverse swaps start/end y");
+        assertFloatEq(orig_end.x, rev_start.x, "reverse swaps end/start x");
+        assertFloatEq(orig_end.y, rev_start.y, "reverse swaps end/start y");
+
+        # node: crossing linestrings get noded at intersection
+        GEOSGeometry cross = parse_wkt(
+            "MULTILINESTRING ((0 0, 10 10), (0 10, 10 0))");
+        GEOSGeometry noded = cross.node();
+        assertGt(0, noded.numGeometries(), "node produces geometry");
+        # noding two crossing lines produces at least 4 segments
+        assertTrue(noded.numGeometries() >= 4, "node splits at intersection");
+
+        # clipByRect: polygon extending outside rectangle
+        GEOSGeometry big_poly = parse_wkt(
+            "POLYGON ((-5 -5, 15 -5, 15 15, -5 15, -5 -5))");
+        GEOSGeometry clipped = big_poly.clipByRect(0.0, 0.0, 10.0, 10.0);
+        assertFloatEq(100.0, clipped.area(), "clipByRect clips to 10x10");
+
+        # clipByRect: geometry entirely inside returns equivalent area
+        GEOSGeometry small_poly = parse_wkt(
+            "POLYGON ((2 2, 8 2, 8 8, 2 8, 2 2))");
+        GEOSGeometry clipped_inside = small_poly.clipByRect(0.0, 0.0, 10.0, 10.0);
+        assertFloatEq(small_poly.area(), clipped_inside.area(),
+            "clipByRect inside returns equivalent area");
+
+        # snap: nearly-coincident vertices snap together
+        GEOSGeometry snap_line = parse_wkt("LINESTRING (0 0, 10 0, 10 10)");
+        GEOSGeometry snap_target = parse_wkt("POINT (10.1 0)");
+        GEOSGeometry snapped = snap_line.snap(snap_target, 0.5);
+        assertEq("LineString", snapped.geometryType(), "snap returns linestring");
+        # the snapped geometry should have a vertex at 10.1, 0
+        assertTrue(snapped.numPoints() >= snap_line.numPoints(),
+            "snap preserves or adds points");
+    }
+
+    triangulationHullTests() {
+        # delaunayTriangulation: multipoint produces a collection
+        GEOSGeometry pts = parse_wkt(
+            "MULTIPOINT ((0 0), (10 0), (5 10), (10 10), (0 10))");
+        GEOSGeometry triangles = pts.delaunayTriangulation();
+        assertGt(0, triangles.numGeometries(), "delaunay produces collection");
+        assertEq("GeometryCollection", triangles.geometryType(),
+            "delaunay returns GeometryCollection");
+
+        # delaunayTriangulation with onlyEdges returns MultiLineString
+        GEOSGeometry edges = pts.delaunayTriangulation(0.0, True);
+        assertEq("MultiLineString", edges.geometryType(),
+            "delaunay onlyEdges returns MultiLineString");
+
+        # constrainedDelaunayTriangulation on polygon
+        GEOSGeometry poly = parse_wkt(
+            "POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        GEOSGeometry cdt = poly.constrainedDelaunayTriangulation();
+        assertGt(0, cdt.numGeometries(),
+            "constrained delaunay produces triangles");
+
+        # voronoiDiagram on multipoint produces polygons
+        GEOSGeometry voronoi = pts.voronoiDiagram();
+        assertGt(0, voronoi.numGeometries(), "voronoi produces collection");
+        assertEq("GeometryCollection", voronoi.geometryType(),
+            "voronoi returns GeometryCollection");
+
+        # concaveHull with ratio 1.0 approximates convex hull
+        GEOSGeometry concave = pts.concaveHull(1.0);
+        GEOSGeometry convex = pts.convexHull();
+        assertEq("Polygon", concave.geometryType(), "concaveHull returns polygon");
+        assertFloatEq(convex.area(), concave.area(),
+            "concaveHull(1.0) area matches convex hull");
+
+        # concaveHullByLength with large length approximates convex hull
+        GEOSGeometry concave_len = pts.concaveHullByLength(1000.0);
+        assertEq("Polygon", concave_len.geometryType(),
+            "concaveHullByLength returns polygon");
+        assertFloatEq(convex.area(), concave_len.area(),
+            "concaveHullByLength(large) area matches convex hull");
+
+        # polygonHullSimplify with vertexFraction=1.0 on polygon
+        GEOSGeometry hull_poly = parse_wkt(
+            "POLYGON ((0 0, 5 0, 10 0, 10 5, 10 10, 5 10, 0 10, 0 5, 0 0))");
+        GEOSGeometry simplified = hull_poly.polygonHullSimplify(True, 1.0);
+        assertEq("Polygon", simplified.geometryType(),
+            "polygonHullSimplify returns polygon");
+        assertTrue(simplified.isValid(), "polygonHullSimplify produces valid polygon");
+    }
+
+    preparedGeometryExtendedTests() {
+        GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        GEOSPreparedGeometry pg = poly.prepare();
+        GEOSGeometry inner = parse_wkt("POINT (5 5)");
+        GEOSGeometry outer = parse_wkt("POINT (20 20)");
+        GEOSGeometry edge = parse_wkt("POINT (10 5)");
+        GEOSGeometry overlap = parse_wkt("POLYGON ((5 5, 15 5, 15 15, 5 15, 5 5))");
+
+        # within
+        GEOSPreparedGeometry pg_inner = inner.prepare();
+        assertTrue(pg_inner.within(poly), "prepared within");
+
+        # touches
+        assertTrue(pg.touches(edge), "prepared touches");
+        assertFalse(pg.touches(inner), "prepared not touches inner");
+
+        # crosses
+        GEOSGeometry crossing_line = parse_wkt("LINESTRING (-5 5, 15 5)");
+        GEOSPreparedGeometry pg_line = crossing_line.prepare();
+        assertTrue(pg_line.crosses(poly), "prepared crosses");
+
+        # overlaps
+        assertTrue(pg.overlaps(overlap), "prepared overlaps");
+
+        # disjoint
+        assertTrue(pg.disjoint(outer), "prepared disjoint");
+        assertFalse(pg.disjoint(inner), "prepared not disjoint");
+
+        # distance
+        float d = pg.distance(outer);
+        assertFloatEq(poly.distance(outer), d, "prepared distance matches");
+
+        # distanceWithin
+        assertTrue(pg.distanceWithin(inner, 20.0), "prepared distanceWithin true");
+        assertFalse(pg.distanceWithin(outer, 1.0), "prepared distanceWithin false");
+
+        # containsXY / intersectsXY
+        assertTrue(pg.containsXY(5.0, 5.0), "prepared containsXY inside");
+        assertFalse(pg.containsXY(20.0, 20.0), "prepared containsXY outside");
+        assertTrue(pg.intersectsXY(5.0, 5.0), "prepared intersectsXY inside");
+        assertTrue(pg.intersectsXY(10.0, 5.0), "prepared intersectsXY edge");
+        assertFalse(pg.intersectsXY(20.0, 20.0), "prepared intersectsXY outside");
+
+        # nearestPoints
+        list<hash<GEOSCoordinate>> np = pg.nearestPoints(outer);
+        assertEq(2, np.size(), "prepared nearestPoints 2 points");
+
+        # relate
+        string matrix = pg.relate(inner);
+        assertEq(9, matrix.size(), "prepared relate 9 chars");
+
+        # relatePattern
+        assertTrue(pg.relatePattern(inner, "T*****FF*"), "prepared relatePattern contains");
+        assertFalse(pg.relatePattern(outer, "T*****FF*"), "prepared relatePattern not contains");
+    }
+
+    advancedGeometricAnalysisTests() {
+        # maximumInscribedCircle on square
+        GEOSGeometry square = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        GEOSGeometry mic = square.maximumInscribedCircle(0.01);
+        assertEq("LineString", mic.geometryType(), "MIC returns LineString");
+        assertEq(2, mic.numPoints(), "MIC has 2 points (center to boundary)");
+
+        # largestEmptyCircle
+        GEOSGeometry obstacles = parse_wkt("MULTIPOINT ((5 5))");
+        GEOSGeometry lec = square.largestEmptyCircle(obstacles, 0.01);
+        assertEq("LineString", lec.geometryType(), "LEC returns LineString");
+        assertEq(2, lec.numPoints(), "LEC has 2 points");
+
+        # minimumRotatedRectangle
+        GEOSGeometry lshape = parse_wkt("POLYGON ((0 0, 10 0, 10 5, 5 5, 5 10, 0 10, 0 0))");
+        GEOSGeometry mrr = lshape.minimumRotatedRectangle();
+        assertEq("Polygon", mrr.geometryType(), "MRR returns Polygon");
+        assertTrue(mrr.isValid(), "MRR is valid");
+
+        # minimumWidth
+        GEOSGeometry mw = lshape.minimumWidth();
+        assertEq("LineString", mw.geometryType(), "minimumWidth returns LineString");
+        assertGt(0.0, mw.length(), "minimumWidth has positive length");
+
+        # minimumBoundingCircle on triangle
+        GEOSGeometry triangle = parse_wkt("POLYGON ((0 0, 10 0, 5 8, 0 0))");
+        GEOSGeometry mbc = triangle.minimumBoundingCircle();
+        assertEq("Polygon", mbc.geometryType(), "MBC returns Polygon");
+        # MBC area must be >= triangle area (circle approximation may not exactly cover
+        # all vertices due to polygon discretization, so we check area relationship)
+        assertGt(0.0, mbc.area(), "MBC has positive area");
+        assertTrue(mbc.area() >= triangle.area(), "MBC area >= triangle area");
+
+        # minimumClearance on polygon with near-parallel edges
+        GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        float mc = poly.minimumClearance();
+        assertGt(0.0, mc, "minimumClearance > 0");
+
+        # minimumClearanceLine
+        GEOSGeometry mcl = poly.minimumClearanceLine();
+        assertEq("LineString", mcl.geometryType(), "minimumClearanceLine returns LineString");
+    }
+
+    polygonizePrecisionTests() {
+        # polygonize: create polygons from linework
+        auto lines = (
+            parse_wkt("LINESTRING (0 0, 10 0)"),
+            parse_wkt("LINESTRING (10 0, 10 10)"),
+            parse_wkt("LINESTRING (10 10, 0 10)"),
+            parse_wkt("LINESTRING (0 10, 0 0)"),
+        );
+        GEOSGeometry result = geos_polygonize(lines);
+        assertEq(1, result.numGeometries(), "polygonize creates 1 polygon");
+        assertFloatEq(100.0, result.getGeometryN(0).area(), "polygonize polygon area");
+
+        # buildArea
+        GEOSGeometry linework = parse_wkt(
+            "MULTILINESTRING ((0 0, 10 0), (10 0, 10 10), (10 10, 0 10), (0 10, 0 0))");
+        GEOSGeometry built = linework.buildArea();
+        assertFloatEq(100.0, built.area(), "buildArea area");
+
+        # setPrecision / getPrecision
+        GEOSGeometry pt = parse_wkt("POINT (1.123456789 2.987654321)");
+        GEOSGeometry snapped = pt.setPrecision(0.01);
+        assertTrue(snapped.isValid(), "setPrecision valid");
+        float prec = snapped.getPrecision();
+        assertFloatEq(0.01, prec, "getPrecision returns grid size");
+
+        # setPrecision then getPrecision round-trip
+        GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10.5 0, 10.5 10.5, 0 10.5, 0 0))");
+        GEOSGeometry poly_snapped = poly.setPrecision(1.0);
+        assertTrue(poly_snapped.isValid(), "setPrecision on polygon valid");
+    }
+
+    coordinateTransformTests() {
+        # identity transform
+        GEOSGeometry pt = parse_wkt("POINT (3 4)");
+        GEOSGeometry same = pt.transformXY(auto sub (float x, float y) { return (x, y); });
+        assertTrue(pt.equalsExact(same), "identity transform preserves geometry");
+
+        # translation: shift by (10, 20)
+        GEOSGeometry shifted = pt.transformXY(auto sub (float x, float y) { return (x + 10, y + 20); });
+        assertFloatEq(13.0, shifted.getX(), "translate X");
+        assertFloatEq(24.0, shifted.getY(), "translate Y");
+
+        # scaling: double coordinates, area quadruples
+        GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        GEOSGeometry scaled = poly.transformXY(auto sub (float x, float y) { return (x * 2, y * 2); });
+        assertFloatEq(400.0, scaled.area(), "scale 2x area quadruples");
+
+        # transform preserves geometry type and point count
+        assertEq("Polygon", scaled.geometryType(), "scaled type preserved");
+        assertEq(poly.numPoints(), scaled.numPoints(), "scaled point count preserved");
+
+        # transform on linestring
+        GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 0, 10 10)");
+        GEOSGeometry line_shifted = line.transformXY(auto sub (float x, float y) { return (x + 5, y + 5); });
+        assertFloatEq(5.0, line_shifted.getStartPoint().getX(), "line translate startX");
+        assertFloatEq(5.0, line_shifted.getStartPoint().getY(), "line translate startY");
+
+        # callback returning hash
+        GEOSGeometry hash_result = pt.transformXY(auto sub (float x, float y) { return {"x": x * 3, "y": y * 3}; });
+        assertFloatEq(9.0, hash_result.getX(), "hash callback X");
+        assertFloatEq(12.0, hash_result.getY(), "hash callback Y");
+    }
+
+    clusteringTests() {
+        # DBSCAN on well-separated groups
+        GEOSGeometry points = parse_wkt("MULTIPOINT ((0 0), (1 0), (0 1), (10 10), (11 10), (10 11), (50 50))");
+        hash<auto> result = geos_cluster_dbscan(points, 3.0, 2);
+        assertGt(0, result.numClusters, "dbscan finds clusters");
+        assertEq(7, result.assignments.size(), "dbscan assignments for all points");
+        # first 3 points should be same cluster
+        assertEq(result.assignments[0], result.assignments[1], "dbscan cluster 0 == 1");
+        assertEq(result.assignments[0], result.assignments[2], "dbscan cluster 0 == 2");
+        # points 3-5 should be same cluster, different from 0-2
+        assertEq(result.assignments[3], result.assignments[4], "dbscan cluster 3 == 4");
+        assertTrue(result.assignments[0] != result.assignments[3], "dbscan different clusters");
+        # point 6 (outlier) should be noise (-1)
+        assertEq(-1, result.assignments[6], "dbscan outlier is noise");
+    }
+
+    coverageOperationTests() {
+        # coverageUnion on adjacent non-overlapping polygons
+        GEOSGeometry coverage = parse_wkt(
+            "GEOMETRYCOLLECTION ("
+            + "POLYGON ((0 0, 5 0, 5 5, 0 5, 0 0)), "
+            + "POLYGON ((5 0, 10 0, 10 5, 5 5, 5 0)))");
+        GEOSGeometry union_result = coverage.coverageUnion();
+        assertTrue(union_result.isValid(), "coverageUnion valid");
+        assertFloatEq(50.0, union_result.area(), "coverageUnion area");
+
+        # coverageSimplifyVW
+        GEOSGeometry simplified = coverage.coverageSimplifyVW(1.0);
+        assertTrue(simplified.isValid(), "coverageSimplifyVW valid");
+
+        # coverageIsValid
+        GEOSGeometry valid_result = coverage.coverageIsValid(0.0);
+        assertTrue(valid_result.isEmpty(), "coverageIsValid on valid coverage returns empty");
+    }
+
+    miscUtilityTests() {
+        # extractUniquePoints
+        GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        GEOSGeometry unique = poly.extractUniquePoints();
+        assertEq("MultiPoint", unique.geometryType(), "extractUniquePoints type");
+        assertEq(4, unique.numGeometries(), "extractUniquePoints count (4 unique from 5)");
+
+        # sharedPaths
+        GEOSGeometry line1 = parse_wkt("LINESTRING (0 0, 10 0, 10 10)");
+        GEOSGeometry line2 = parse_wkt("LINESTRING (0 0, 10 0)");
+        GEOSGeometry shared = line1.sharedPaths(line2);
+        assertEq("GeometryCollection", shared.geometryType(), "sharedPaths type");
+
+        # removeRepeatedPoints
+        GEOSGeometry dup_line = parse_wkt("LINESTRING (0 0, 0 0, 5 5, 5 5, 10 10)");
+        GEOSGeometry deduped = dup_line.removeRepeatedPoints(0.0);
+        assertEq(3, deduped.numPoints(), "removeRepeatedPoints removes dups");
+
+        # densify
+        GEOSGeometry sparse_line = parse_wkt("LINESTRING (0 0, 10 0)");
+        GEOSGeometry dense = sparse_line.densify(2.0);
+        assertGt(2, dense.numPoints(), "densify adds points");
+        assertFloatEq(sparse_line.length(), dense.length(), "densify preserves length");
+
+        # geos_orientation_index
+        int oi = geos_orientation_index(0.0, 0.0, 10.0, 0.0, 5.0, 5.0);
+        assertEq(1, oi, "orientation left");
+        oi = geos_orientation_index(0.0, 0.0, 10.0, 0.0, 5.0, -5.0);
+        assertEq(-1, oi, "orientation right");
+        oi = geos_orientation_index(0.0, 0.0, 10.0, 0.0, 5.0, 0.0);
+        assertEq(0, oi, "orientation collinear");
+
+        # geos_segment_intersection
+        hash<GEOSCoordinate> isect = geos_segment_intersection(0.0, 0.0, 10.0, 10.0, 0.0, 10.0, 10.0, 0.0);
+        assertFloatEq(5.0, isect.x, "segment intersection x");
+        assertFloatEq(5.0, isect.y, "segment intersection y");
+
+        # STRtree build and iterate
+        GEOSSTRtree tree(10);
+        GEOSGeometry g1 = parse_wkt("POINT (1 1)");
+        GEOSGeometry g2 = parse_wkt("POINT (2 2)");
+        GEOSGeometry g3 = parse_wkt("POINT (3 3)");
+        tree.insert(g1, "item1");
+        tree.insert(g2, "item2");
+        tree.insert(g3, "item3");
+        tree.build();
+        list<auto> items = tree.iterate();
+        assertEq(3, items.size(), "iterate returns all items");
+        # items may be in any order, check that all are present
+        list<auto> sorted_items = sort(items);
+        assertEq(("item1", "item2", "item3"), sorted_items, "iterate contains all items");
     }
 
     private assertFloatEq(float expected, float actual, string msg) {

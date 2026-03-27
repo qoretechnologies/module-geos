@@ -164,3 +164,69 @@ auto GEOSSTRtree::nearestItem(GEOSGeometry[QoreGEOSGeometry] geom) {
 int GEOSSTRtree::size() [flags=RET_VALUE_ONLY] {
     return (int64)t->size();
 }
+
+//! Forces the tree to be built immediately
+/** Normally the tree is built lazily on the first query. This method forces
+    the tree to be built immediately, which can be useful to front-load the
+    cost of building the index.
+
+    @par Example:
+    @code{.py}
+GEOSSTRtree tree(10);
+tree.insert(geom1, "item1");
+tree.insert(geom2, "item2");
+tree.build();
+    @endcode
+
+    @throw GEOS-ERROR error building tree
+
+    @since geos 1.3
+*/
+nothing GEOSSTRtree::build() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    int rv = GEOSSTRtree_build_r(ctx, t->getTree());
+    if (rv == 0) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "build")) {
+            xsink->raiseException("GEOS-ERROR", "error building STRtree");
+        }
+    }
+}
+
+//! Iterates over all items in the tree and returns them as a list
+/** Returns a list of all user data items that have been inserted into the tree.
+
+    @return a list of all user data items in the tree
+
+    @par Example:
+    @code{.py}
+GEOSSTRtree tree(10);
+tree.insert(geom1, "item1");
+tree.insert(geom2, "item2");
+list<auto> items = tree.iterate();
+# items contains "item1" and "item2"
+    @endcode
+
+    @throw GEOS-ERROR error iterating tree
+    @throw THREAD-CANCELLED if thread cancellation is requested during iteration
+    @throw PROGRAM-INTERRUPTED if program interrupt is requested during iteration
+
+    @since geos 1.3
+*/
+list<auto> GEOSSTRtree::iterate() {
+
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+
+    ReferenceHolder<QoreListNode> result(new QoreListNode(autoTypeInfo), xsink);
+    QueryCallbackContext cbctx;
+    cbctx.result = &result;
+    cbctx.xsink = xsink;
+    cbctx.count = 0;
+
+    GEOSSTRtree_iterate_r(ctx, t->getTree(), strtree_query_callback, &cbctx);
+    if (*xsink) {
+        return QoreValue();
+    }
+    return result.release();
+}

@@ -154,3 +154,283 @@ bool GEOSPreparedGeometry::coveredBy(GEOSGeometry[QoreGEOSGeometry] other) {
     }
     return (bool)rv;
 }
+
+//! Tests whether the prepared geometry is within the given geometry
+/** @param other the geometry to test
+    @return @ref True if this geometry is within the other geometry
+
+    @throw GEOS-ERROR error in spatial predicate
+
+    @since geos 1.1
+*/
+bool GEOSPreparedGeometry::within(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSPreparedWithin_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared within")) {
+            xsink->raiseException("GEOS-ERROR", "error in prepared within predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether the prepared geometry touches the given geometry
+/** @param other the geometry to test
+    @return @ref True if the geometries touch
+
+    @throw GEOS-ERROR error in spatial predicate
+
+    @since geos 1.1
+*/
+bool GEOSPreparedGeometry::touches(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSPreparedTouches_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared touches")) {
+            xsink->raiseException("GEOS-ERROR", "error in prepared touches predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether the prepared geometry crosses the given geometry
+/** @param other the geometry to test
+    @return @ref True if the geometries cross
+
+    @throw GEOS-ERROR error in spatial predicate
+
+    @since geos 1.1
+*/
+bool GEOSPreparedGeometry::crosses(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSPreparedCrosses_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared crosses")) {
+            xsink->raiseException("GEOS-ERROR", "error in prepared crosses predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether the prepared geometry overlaps the given geometry
+/** @param other the geometry to test
+    @return @ref True if the geometries overlap
+
+    @throw GEOS-ERROR error in spatial predicate
+
+    @since geos 1.1
+*/
+bool GEOSPreparedGeometry::overlaps(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSPreparedOverlaps_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared overlaps")) {
+            xsink->raiseException("GEOS-ERROR", "error in prepared overlaps predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether the prepared geometry is disjoint from the given geometry
+/** @param other the geometry to test
+    @return @ref True if the geometries are disjoint
+
+    @throw GEOS-ERROR error in spatial predicate
+
+    @since geos 1.1
+*/
+bool GEOSPreparedGeometry::disjoint(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSPreparedDisjoint_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared disjoint")) {
+            xsink->raiseException("GEOS-ERROR", "error in prepared disjoint predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Computes the distance between the prepared geometry and another geometry
+/** @param other the geometry to compute distance to
+    @return the distance between the closest points of the two geometries
+
+    @throw GEOS-ERROR error computing distance
+
+    @since geos 1.1
+*/
+float GEOSPreparedGeometry::distance(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double dist;
+    if (!GEOSPreparedDistance_r(ctx, pg->getPreparedGeometry(), other->getGeometry(), &dist)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared distance")) {
+            xsink->raiseException("GEOS-ERROR", "error computing prepared distance");
+        }
+        return QoreValue();
+    }
+    return dist;
+}
+
+//! Tests whether the distance between the prepared geometry and another is within a given value
+/** @param other the geometry to test
+    @param dist the distance threshold
+    @return @ref True if the distance is within the threshold
+
+    @throw GEOS-ERROR error in distance computation
+
+    @since geos 1.1
+*/
+bool GEOSPreparedGeometry::distanceWithin(GEOSGeometry[QoreGEOSGeometry] other, float dist) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSPreparedDistanceWithin_r(ctx, pg->getPreparedGeometry(), other->getGeometry(), dist);
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared distanceWithin")) {
+            xsink->raiseException("GEOS-ERROR", "error in prepared distanceWithin");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether the prepared geometry contains the given point coordinates
+/** @param x the X coordinate
+    @param y the Y coordinate
+    @return @ref True if this geometry contains the point (x, y)
+
+    @throw GEOS-ERROR error in spatial predicate
+
+    @since geos 1.1
+*/
+bool GEOSPreparedGeometry::containsXY(float x, float y) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSPreparedContainsXY_r(ctx, pg->getPreparedGeometry(), x, y);
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared containsXY")) {
+            xsink->raiseException("GEOS-ERROR", "error in prepared containsXY predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether the prepared geometry intersects the given point coordinates
+/** @param x the X coordinate
+    @param y the Y coordinate
+    @return @ref True if this geometry intersects the point (x, y)
+
+    @throw GEOS-ERROR error in spatial predicate
+
+    @since geos 1.1
+*/
+bool GEOSPreparedGeometry::intersectsXY(float x, float y) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSPreparedIntersectsXY_r(ctx, pg->getPreparedGeometry(), x, y);
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared intersectsXY")) {
+            xsink->raiseException("GEOS-ERROR", "error in prepared intersectsXY predicate");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Returns the nearest points of the prepared geometry and the given geometry
+/** @param other the other geometry
+    @return a list of two @ref GEOSCoordinate hashes representing the nearest points
+
+    @throw GEOS-ERROR error computing nearest points
+
+    @since geos 1.1
+*/
+list<hash<GEOSCoordinate>> GEOSPreparedGeometry::nearestPoints(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSCoordSequence* cs = GEOSPreparedNearestPoints_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
+    if (!cs) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared nearestPoints")) {
+            xsink->raiseException("GEOS-ERROR", "error computing prepared nearest points");
+        }
+        return QoreValue();
+    }
+
+    ReferenceHolder<QoreListNode> result(new QoreListNode(hashdeclGEOSCoordinate->getTypeInfo()), xsink);
+    unsigned int size;
+    GEOSCoordSeq_getSize_r(ctx, cs, &size);
+    for (unsigned int i = 0; i < size; ++i) {
+        double x, y;
+        GEOSCoordSeq_getX_r(ctx, cs, i, &x);
+        GEOSCoordSeq_getY_r(ctx, cs, i, &y);
+        ReferenceHolder<QoreHashNode> h(new QoreHashNode(hashdeclGEOSCoordinate, xsink), xsink);
+        h->setKeyValue("x", x, xsink);
+        h->setKeyValue("y", y, xsink);
+        // try to get Z coordinate
+        unsigned int dims;
+        GEOSCoordSeq_getDimensions_r(ctx, cs, &dims);
+        if (dims >= 3) {
+            double z;
+            GEOSCoordSeq_getZ_r(ctx, cs, i, &z);
+            h->setKeyValue("z", z, xsink);
+        }
+        result->push(h.release(), xsink);
+    }
+    GEOSCoordSeq_destroy_r(ctx, cs);
+    return result.release();
+}
+
+//! Returns the DE-9IM intersection matrix for the prepared geometry and another
+/** @param other the geometry to compute the relationship with
+    @return a 9-character string representing the DE-9IM matrix
+
+    @throw GEOS-ERROR error computing relate matrix
+
+    @since geos 1.1
+*/
+string GEOSPreparedGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char* matrix = GEOSPreparedRelate_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
+    if (!matrix) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared relate")) {
+            xsink->raiseException("GEOS-ERROR", "error computing prepared DE-9IM relate matrix");
+        }
+        return QoreValue();
+    }
+    QoreStringNode* rv = new QoreStringNode(matrix);
+    GEOSFree_r(ctx, matrix);
+    return rv;
+}
+
+//! Tests whether the DE-9IM intersection matrix for the prepared geometry matches a pattern
+/** @param other the geometry to compute the relationship with
+    @param pattern the DE-9IM pattern to match (may contain T, F, *, 0-9)
+    @return @ref True if the relationship matches the pattern
+
+    @throw GEOS-ERROR error testing relate pattern
+
+    @since geos 1.1
+*/
+bool GEOSPreparedGeometry::relatePattern(GEOSGeometry[QoreGEOSGeometry] other, string pattern) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSPreparedRelatePattern_r(ctx, pg->getPreparedGeometry(), other->getGeometry(), pattern->c_str());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "prepared relatePattern")) {
+            xsink->raiseException("GEOS-ERROR", "error testing prepared DE-9IM pattern");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
