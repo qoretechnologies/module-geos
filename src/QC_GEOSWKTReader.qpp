@@ -35,7 +35,6 @@ GEOSWKTReader reader();
 GEOSGeometry geom = reader.read("POINT (1.0 2.0)");
     @endcode
 
-    @since geos 1.0
 */
 qclass GEOSWKTReader [arg=QoreGEOSWKTReader* r; ns=Qore::GEOS];
 

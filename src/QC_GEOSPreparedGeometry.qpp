@@ -48,7 +48,6 @@ for (int i = 0; i < 1000; ++i) {
     @note The prepared geometry holds a strong reference to the source
     GEOSGeometry QoreObject, preventing it from being garbage collected.
 
-    @since geos 1.0
 */
 qclass GEOSPreparedGeometry [arg=QoreGEOSPreparedGeometry* pg; ns=Qore::GEOS];
 
@@ -161,7 +160,6 @@ bool GEOSPreparedGeometry::coveredBy(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 
-    @since geos 1.0
 */
 bool GEOSPreparedGeometry::within(GEOSGeometry[QoreGEOSGeometry] other) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -182,7 +180,6 @@ bool GEOSPreparedGeometry::within(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 
-    @since geos 1.0
 */
 bool GEOSPreparedGeometry::touches(GEOSGeometry[QoreGEOSGeometry] other) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -203,7 +200,6 @@ bool GEOSPreparedGeometry::touches(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 
-    @since geos 1.0
 */
 bool GEOSPreparedGeometry::crosses(GEOSGeometry[QoreGEOSGeometry] other) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -224,7 +220,6 @@ bool GEOSPreparedGeometry::crosses(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 
-    @since geos 1.0
 */
 bool GEOSPreparedGeometry::overlaps(GEOSGeometry[QoreGEOSGeometry] other) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -245,7 +240,6 @@ bool GEOSPreparedGeometry::overlaps(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 
-    @since geos 1.0
 */
 bool GEOSPreparedGeometry::disjoint(GEOSGeometry[QoreGEOSGeometry] other) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -266,7 +260,6 @@ bool GEOSPreparedGeometry::disjoint(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error computing distance
 
-    @since geos 1.0
 */
 float GEOSPreparedGeometry::distance(GEOSGeometry[QoreGEOSGeometry] other) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -288,7 +281,6 @@ float GEOSPreparedGeometry::distance(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in distance computation
 
-    @since geos 1.0
 */
 bool GEOSPreparedGeometry::distanceWithin(GEOSGeometry[QoreGEOSGeometry] other, float dist) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -310,7 +302,6 @@ bool GEOSPreparedGeometry::distanceWithin(GEOSGeometry[QoreGEOSGeometry] other, 
 
     @throw GEOS-ERROR error in spatial predicate
 
-    @since geos 1.0
 */
 bool GEOSPreparedGeometry::containsXY(float x, float y) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -332,7 +323,6 @@ bool GEOSPreparedGeometry::containsXY(float x, float y) {
 
     @throw GEOS-ERROR error in spatial predicate
 
-    @since geos 1.0
 */
 bool GEOSPreparedGeometry::intersectsXY(float x, float y) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -353,7 +343,6 @@ bool GEOSPreparedGeometry::intersectsXY(float x, float y) {
 
     @throw GEOS-ERROR error computing nearest points
 
-    @since geos 1.0
 */
 list<hash<GEOSCoordinate>> GEOSPreparedGeometry::nearestPoints(GEOSGeometry[QoreGEOSGeometry] other) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -396,7 +385,6 @@ list<hash<GEOSCoordinate>> GEOSPreparedGeometry::nearestPoints(GEOSGeometry[Qore
 
     @throw GEOS-ERROR error computing relate matrix
 
-    @since geos 1.0
 */
 string GEOSPreparedGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -420,7 +408,6 @@ string GEOSPreparedGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error testing relate pattern
 
-    @since geos 1.0
 */
 bool GEOSPreparedGeometry::relatePattern(GEOSGeometry[QoreGEOSGeometry] other, string pattern) {
     GEOSContextHandle_t ctx = geos_get_context();

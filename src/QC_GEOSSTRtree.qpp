@@ -73,7 +73,6 @@ list<auto> results = tree.query(query_env);
 # results contains "item1" and "item2"
     @endcode
 
-    @since geos 1.0
 */
 qclass GEOSSTRtree [arg=QoreGEOSSTRtree* t; ns=Qore::GEOS];
 

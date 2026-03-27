@@ -35,7 +35,6 @@ GEOSWKBReader reader();
 GEOSGeometry geom = reader.read(wkb_data);
     @endcode
 
-    @since geos 1.0
 */
 qclass GEOSWKBReader [arg=QoreGEOSWKBReader* r; ns=Qore::GEOS];
 

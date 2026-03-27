@@ -36,7 +36,6 @@ writer.setIncludeSRID(True);
 binary wkb = writer.write(geom);
     @endcode
 
-    @since geos 1.0
 */
 qclass GEOSWKBWriter [arg=QoreGEOSWKBWriter* w; ns=Qore::GEOS];
 

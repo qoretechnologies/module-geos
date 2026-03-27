@@ -42,7 +42,6 @@ public namespace GEOSDataProvider {
     provider.createRecord({"geometry": '{"type":"Point","coordinates":[1,2]}'});
     @endcode
 
-    @since geos 1.0
 */
 public class GEOSGeoJsonWriteDataProvider inherits DataProvider::AbstractDataProvider {
     public {

@@ -37,7 +37,6 @@ writer.setRoundingPrecision(3);
 string wkt = writer.write(geom);
     @endcode
 
-    @since geos 1.0
 */
 qclass GEOSWKTWriter [arg=QoreGEOSWKTWriter* w; ns=Qore::GEOS];
 
