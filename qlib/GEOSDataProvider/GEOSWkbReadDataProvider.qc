@@ -111,10 +111,12 @@ public class GEOSWkbReadDataProvider inherits DataProvider::AbstractDataProvider
                 "default_value": "hex",
                 "allowed_values": (
                     <AllowedValueInfo>{
+                        "display_name": "Hex",
                         "value": "hex",
                         "desc": "Hex-encoded WKB data, one geometry per line (default)",
                     },
                     <AllowedValueInfo>{
+                        "display_name": "Binary",
                         "value": "binary",
                         "desc": "Length-prefixed binary WKB data (4-byte big-endian uint32 length + raw WKB)",
                     },
