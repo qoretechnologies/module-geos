@@ -199,8 +199,8 @@ public class GEOSGeoJsonReadDataProvider inherits DataProvider::AbstractDataProv
     }
 
     #! Returns the record type
-    private *AbstractDataProviderType getRecordTypeImpl() {
-        return RecordType;
+    private *hash<string, AbstractDataField> getRecordTypeImpl(*hash<auto> search_options) {
+        return RecordType.getFields();
     }
 
     #! Returns static provider info
@@ -237,8 +237,8 @@ public class GEOSGeoJsonRecordIterator inherits DataProvider::AbstractDataProvid
     }
 
     #! Returns the record type
-    *AbstractDataProviderType getRecordType() {
-        return GEOSGeoJsonReadDataProvider::RecordType;
+    *hash<string, AbstractDataField> getRecordType() {
+        return GEOSGeoJsonReadDataProvider::RecordType.getFields();
     }
 }
 }

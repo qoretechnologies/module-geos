@@ -221,8 +221,8 @@ public class GEOSWkbWriteDataProvider inherits DataProvider::AbstractDataProvide
     }
 
     #! Returns the record type
-    private *AbstractDataProviderType getRecordTypeImpl() {
-        return RecordType;
+    private *hash<string, AbstractDataField> getRecordTypeImpl(*hash<auto> search_options) {
+        return RecordType.getFields();
     }
 
     #! Returns static provider info

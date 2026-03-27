@@ -151,8 +151,8 @@ public class GEOSGeoJsonWriteDataProvider inherits DataProvider::AbstractDataPro
     }
 
     #! Returns the record type
-    private *AbstractDataProviderType getRecordTypeImpl() {
-        return RecordType;
+    private *hash<string, AbstractDataField> getRecordTypeImpl(*hash<auto> search_options) {
+        return RecordType.getFields();
     }
 
     #! Returns static provider info

@@ -205,8 +205,8 @@ public class GEOSWktReadDataProvider inherits DataProvider::AbstractDataProvider
     }
 
     #! Returns the record type
-    private *AbstractDataProviderType getRecordTypeImpl() {
-        return RecordType;
+    private *hash<string, AbstractDataField> getRecordTypeImpl(*hash<auto> search_options) {
+        return RecordType.getFields();
     }
 
     #! Returns static provider info
@@ -243,8 +243,8 @@ public class GEOSWktRecordIterator inherits DataProvider::AbstractDataProviderRe
     }
 
     #! Returns the record type
-    *AbstractDataProviderType getRecordType() {
-        return GEOSWktReadDataProvider::RecordType;
+    *hash<string, AbstractDataField> getRecordType() {
+        return GEOSWktReadDataProvider::RecordType.getFields();
     }
 }
 }
