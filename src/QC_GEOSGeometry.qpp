@@ -2765,7 +2765,7 @@ printf("precision: %f\n", prec);
 
     @since geos 1.2
 */
-float GEOSGeometry::getPrecision() {
+float GEOSGeometry::getPrecision() [flags=RET_VALUE_ONLY] {
     GEOSContextHandle_t ctx = geos_get_context();
     return GEOSGeom_getPrecision_r(ctx, g->getGeometry());
 }

@@ -871,6 +871,11 @@ hash<auto> geos_cluster_dbscan(GEOSGeometry[QoreGEOSGeometry] geom, float eps, i
 
     ReferenceHolder<QoreListNode> assign_list(new QoreListNode(bigIntTypeInfo), xsink);
     for (int i = 0; i < numGeoms; ++i) {
+        if (!(i % 100) && qore_check_cancel(xsink)) {
+            GEOSFree_r(ctx, assignments);
+            GEOSClusterInfo_destroy_r(ctx, info);
+            return QoreValue();
+        }
         // SIZE_MAX means noise (-1 in our convention)
         if (assignments[i] == SIZE_MAX) {
             assign_list->push(-1, xsink);
