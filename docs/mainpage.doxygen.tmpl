@@ -6,7 +6,7 @@
 
     The geos module provides <a href="https://libgeos.org">GEOS (Geometry Engine - Open Source)</a> bindings for
     %Qore, enabling fast GIS data processing with spatial predicates, topology operations, spatial indexing, and
-    WKT/WKB serialization.
+    WKT/WKB/GeoJSON serialization.
 
     This module is released under the MIT license (see COPYING.MIT in the source distribution for more information).
 
@@ -20,23 +20,26 @@
 
     The module has two layers:
     - <b>C++ binary module</b> (\c geos): GEOSGeometry, GEOSPreparedGeometry, GEOSSTRtree, and
-      WKT/WKB reader/writer classes for in-memory geometry operations
+      WKT/WKB/GeoJSON reader/writer classes for in-memory geometry operations
     - <b>@ref geosdataproviderintro "GEOSDataProvider"</b>: data provider integration for reading and
-      writing WKT/WKB geometry files in data pipelines (load with \c %%requires \c GEOSDataProvider)
+      writing WKT/WKB/GeoJSON geometry files in data pipelines (load with \c %%requires \c GEOSDataProvider)
 
     @section geosclasses Classes
 
     The following classes are provided:
     - @ref Qore::GEOS::GEOSGeometry "GEOSGeometry" - Core geometry wrapper with spatial predicates, topology
-      operations, distance calculations, linear referencing, coordinate access, and WKT/WKB serialization
+      operations, distance calculations, simplification, validation, linear referencing, coordinate access,
+      triangulation, hull operations, and WKT/WKB/GeoJSON serialization
     - @ref Qore::GEOS::GEOSPreparedGeometry "GEOSPreparedGeometry" - Pre-indexed geometry for fast repeated
-      spatial queries
+      spatial queries (contains, intersects, within, touches, crosses, overlaps, disjoint, distance, relate)
     - @ref Qore::GEOS::GEOSSTRtree "GEOSSTRtree" - STR-packed R-tree spatial index for envelope intersection
-      queries and nearest-neighbor searches
+      queries, nearest-neighbor searches, and iteration
     - @ref Qore::GEOS::GEOSWKTReader "GEOSWKTReader" - WKT parsing
     - @ref Qore::GEOS::GEOSWKTWriter "GEOSWKTWriter" - WKT serialization with formatting options
     - @ref Qore::GEOS::GEOSWKBReader "GEOSWKBReader" - WKB parsing (binary and hex)
     - @ref Qore::GEOS::GEOSWKBWriter "GEOSWKBWriter" - WKB serialization (binary and hex)
+    - @ref Qore::GEOS::GEOSGeoJSONReader "GEOSGeoJSONReader" - GeoJSON parsing (since 1.1)
+    - @ref Qore::GEOS::GEOSGeoJSONWriter "GEOSGeoJSONWriter" - GeoJSON serialization (since 1.1)
 
     @section geosfunctions Standalone Functions
 
@@ -46,11 +49,28 @@
     - @ref Qore::GEOS::make_wkt() "make_wkt()" - Convenience WKT serialization
     - @ref Qore::GEOS::parse_wkb() "parse_wkb()" - Convenience WKB parsing
     - @ref Qore::GEOS::make_wkb() "make_wkb()" - Convenience WKB serialization
+    - @ref Qore::GEOS::parse_geojson() "parse_geojson()" - Convenience GeoJSON parsing (since 1.1)
+    - @ref Qore::GEOS::make_geojson() "make_geojson()" - Convenience GeoJSON serialization (since 1.1)
+    - @ref Qore::GEOS::geos_create_point() "geos_create_point()" - Create point from coordinates (since 1.1)
+    - @ref Qore::GEOS::geos_create_linestring() "geos_create_linestring()" - Create linestring from coordinates (since 1.1)
+    - @ref Qore::GEOS::geos_create_polygon() "geos_create_polygon()" - Create polygon from coordinate rings (since 1.1)
+    - @ref Qore::GEOS::geos_create_collection() "geos_create_collection()" - Create geometry collection (since 1.1)
+    - @ref Qore::GEOS::geos_create_empty_collection() "geos_create_empty_collection()" - Create empty collection (since 1.1)
+    - @ref Qore::GEOS::geos_create_rectangle() "geos_create_rectangle()" - Create rectangle from bounds (since 1.1)
+    - @ref Qore::GEOS::geos_relate_pattern_match() "geos_relate_pattern_match()" - Test DE-9IM pattern match (since 1.1)
+    - @ref Qore::GEOS::geos_polygonize() "geos_polygonize()" - Build polygons from linework (since 1.1)
+    - @ref Qore::GEOS::geos_cluster_dbscan() "geos_cluster_dbscan()" - DBSCAN spatial clustering (since 1.1)
+    - @ref Qore::GEOS::geos_orientation_index() "geos_orientation_index()" - Point orientation test (since 1.1)
+    - @ref Qore::GEOS::geos_segment_intersection() "geos_segment_intersection()" - Line segment intersection (since 1.1)
 
     @section geosconstants Constants
 
-    @ref geos_geometry_type_constants "Geometry Type Constants" - integer constants for geometry type
-    identification (\c GEOS_POINT, \c GEOS_LINESTRING, \c GEOS_POLYGON, etc.)
+    - @ref geos_geometry_type_constants "Geometry Type Constants" - integer constants for geometry type
+      identification (\c GEOS_POINT, \c GEOS_LINESTRING, \c GEOS_POLYGON, etc.)
+    - @ref geos_make_valid_constants "MakeValid Method Constants" - repair methods
+      (\c GEOS_MAKE_VALID_LINEWORK, \c GEOS_MAKE_VALID_STRUCTURE)
+    - @ref geos_buffer_style_constants "Buffer Style Constants" - cap and join styles for buffering
+      (\c GEOSBUF_CAP_ROUND, \c GEOSBUF_CAP_FLAT, \c GEOSBUF_JOIN_MITRE, etc.)
 
     @section geostypes Type Mappings
 
@@ -60,6 +80,7 @@
     |Geometry|@ref Qore::GEOS::GEOSGeometry "GEOSGeometry"
     |WKT string|\c string
     |WKB data|\c binary
+    |GeoJSON string|\c string
 
     @section geosexamples Examples
 
@@ -74,6 +95,28 @@ GEOSGeometry point = new GEOSGeometry("POINT (5 5)");
 printf("contains: %y\n", poly.contains(point));  # True
 printf("area: %y\n", poly.area());                # 100.0
 printf("centroid: %y\n", make_wkt(poly.centroid())); # "POINT (5 5)"
+    @endcode
+
+    @par Create geometries programmatically (since 1.1):
+    @code{.py}
+GEOSGeometry pt = geos_create_point(1.0, 2.0);
+GEOSGeometry rect = geos_create_rectangle(0, 0, 10, 20);
+GEOSGeometry line = geos_create_linestring(({"x": 0, "y": 0}, {"x": 10, "y": 10}));
+    @endcode
+
+    @par Use GeoJSON I/O (since 1.1):
+    @code{.py}
+GEOSGeometry geom = parse_geojson('{"type":"Point","coordinates":[1,2]}');
+string json = make_geojson(geom);
+string json_pretty = geom.toGeoJSON(2);  # pretty-printed
+    @endcode
+
+    @par Simplify and validate geometries (since 1.1):
+    @code{.py}
+GEOSGeometry invalid = parse_wkt("POLYGON ((0 0, 10 10, 0 10, 10 0, 0 0))");
+printf("valid: %y (%s)\n", invalid.isValid(), invalid.isValidReason());
+GEOSGeometry fixed = invalid.makeValid();
+GEOSGeometry simple = complex_poly.topologyPreserveSimplify(1.0);
     @endcode
 
     @par Use prepared geometry for fast repeated queries:
@@ -99,6 +142,13 @@ list<auto> results = tree.query(parse_wkt("POLYGON ((0 0, 5 0, 5 5, 0 5, 0 0))")
 # results contains "A" and "B"
     @endcode
 
+    @par Transform coordinates with a callback (since 1.1):
+    @code{.py}
+GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+# shift all coordinates by (100, 200)
+GEOSGeometry shifted = poly.transformXY(sub (float x, float y) { return (x + 100, y + 200); });
+    @endcode
+
     @par Read geometry from a WKT file using the GEOSDataProvider module:
     @code{.py}
 %modern
@@ -111,6 +161,10 @@ map printf("%s: %s\n", $1.type, $1.geometry), provider.searchRecords();
 # Write geometries to a WKB hex file
 GEOSWkbWriteDataProvider writer({"path": "output.wkb"});
 writer.createRecord({"geometry": "POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))"});
+
+# Read/write GeoJSON (since 1.1)
+GEOSGeoJsonReadDataProvider json_reader({"data": '{"type":"Point","coordinates":[1,2]}'});
+map printf("%s\n", $1.type), json_reader.searchRecords();
     @endcode
 
     See the @ref geosdataproviderintro "GEOSDataProvider module documentation" for more examples.
@@ -143,6 +197,49 @@ writer.createRecord({"geometry": "POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))"});
     @endcode
 
     @section geosreleasenotes Release Notes
+
+    @subsection geos_1_1 geos Module Version 1.1
+
+    <b>New Features and Bug Fixes</b>
+    - <b>Programmatic geometry construction</b>: geos_create_point(), geos_create_linestring(),
+      geos_create_polygon(), geos_create_collection(), geos_create_empty_collection(),
+      geos_create_rectangle()
+    - <b>GeoJSON I/O</b>: GEOSGeoJSONReader, GEOSGeoJSONWriter classes; parse_geojson(),
+      make_geojson() convenience functions; GEOSGeometry::toGeoJSON() method;
+      GeoJSON DataProvider read/write classes for data pipeline integration
+    - <b>Geometry properties</b>: isRing(), isClosed(), hasZ(), geometryTypeId(), getDimensions(),
+      getXMin/YMin/XMax/YMax(), getExtent(), getX/Y/Z(), normalize(), equalsExact()
+    - <b>Polygon decomposition</b>: getExteriorRing(), getInteriorRingN(), getNumInteriorRings(),
+      getStartPoint(), getEndPoint(), getPointN()
+    - <b>Validity and repair</b>: isValidReason(), isValidDetail(), makeValid(),
+      makeValidWithParams(), pointOnSurface()
+    - <b>Simplification</b>: simplify(), topologyPreserveSimplify()
+    - <b>DE-9IM spatial relationships</b>: relate(), relatePattern(), geos_relate_pattern_match()
+    - <b>Buffer with style</b>: bufferWithStyle(), offsetCurve() with cap/join style constants
+    - <b>Distance metrics</b>: hausdorffDistance(), hausdorffDistanceDensify(),
+      frechetDistance(), frechetDistanceDensify(), distanceWithin(), distanceIndexed()
+    - <b>Unary union</b>: unaryUnion() for dissolving geometry collections
+    - <b>Line operations</b>: lineMerge(), lineMergeDirected(), lineSubstring(), reverse(),
+      node(), clipByRect(), snap()
+    - <b>Triangulation and Voronoi</b>: delaunayTriangulation(),
+      constrainedDelaunayTriangulation(), voronoiDiagram()
+    - <b>Hull operations</b>: concaveHull(), concaveHullByLength(), polygonHullSimplify()
+    - <b>Advanced analysis</b>: maximumInscribedCircle(), largestEmptyCircle(),
+      minimumRotatedRectangle(), minimumWidth(), minimumBoundingCircle(),
+      minimumClearance(), minimumClearanceLine()
+    - <b>Polygonize and precision</b>: geos_polygonize(), buildArea(), setPrecision(),
+      getPrecision()
+    - <b>Coordinate transformation</b>: transformXY() with Qore closure callback
+    - <b>Clustering</b>: geos_cluster_dbscan() DBSCAN spatial clustering
+    - <b>Coverage operations</b>: coverageUnion(), coverageSimplifyVW(), coverageIsValid()
+    - <b>Prepared geometry</b>: 12 additional predicates (within, touches, crosses, overlaps,
+      disjoint, distance, distanceWithin, containsXY, intersectsXY, nearestPoints,
+      relate, relatePattern)
+    - <b>STRtree enhancements</b>: build(), iterate()
+    - <b>Misc utilities</b>: extractUniquePoints(), sharedPaths(), removeRepeatedPoints(),
+      densify(), geos_orientation_index(), geos_segment_intersection()
+    - <b>Constants</b>: geometry type IDs, MakeValid methods, buffer cap/join styles
+    - <b>Hashdecls</b>: GEOSExtent
 
     @subsection geos_1_0 geos Module Version 1.0
 
