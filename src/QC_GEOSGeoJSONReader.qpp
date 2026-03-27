@@ -38,7 +38,7 @@ GEOSGeoJSONReader reader();
 GEOSGeometry geom = reader.read('{"type": "Point", "coordinates": [1.0, 2.0]}');
     @endcode
 
-    @since geos 1.1
+    @since geos 1.0
 */
 qclass GEOSGeoJSONReader [arg=QoreGEOSGeoJSONReader* r; ns=Qore::GEOS];
 

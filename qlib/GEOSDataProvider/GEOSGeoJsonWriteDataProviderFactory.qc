@@ -25,7 +25,7 @@
 #! Contains all public definitions in the GEOSDataProvider module
 public namespace GEOSDataProvider {
 #! Factory class for GEOS GeoJSON write data providers
-/** @since geos 1.1
+/** @since geos 1.0
 */
 public class GEOSGeoJsonWriteDataProviderFactory inherits DataProvider::AbstractDataProviderFactory {
     public {

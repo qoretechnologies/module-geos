@@ -29,7 +29,7 @@ public namespace GEOSDataProvider {
     Lines are parsed using @ref parse_geojson() and the resulting geometry
     type is extracted.
 
-    @since geos 1.1
+    @since geos 1.0
 */
 public class GEOSGeoJsonIterator inherits AbstractIterator {
     private {

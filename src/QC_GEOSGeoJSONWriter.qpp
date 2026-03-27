@@ -38,7 +38,7 @@ string json = writer.write(geom, 2); # pretty-printed with 2-space indent
     @note Writing GeoJSON Feature or FeatureCollection is not supported; only
     geometry objects are written.
 
-    @since geos 1.1
+    @since geos 1.0
 */
 qclass GEOSGeoJSONWriter [arg=QoreGEOSGeoJSONWriter* w; ns=Qore::GEOS];
 

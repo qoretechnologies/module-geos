@@ -67,7 +67,7 @@ hashdecl GEOSVersionInfo {
 //! Geometry extent (bounding box) hash structure
 /** Represents the axis-aligned bounding box of a geometry with minimum and maximum X/Y coordinates.
 
-    @since geos 1.1
+    @since geos 1.0
 */
 hashdecl GEOSExtent {
     //! Minimum X coordinate
@@ -84,7 +84,7 @@ hashdecl GEOSExtent {
     Integer constants identifying geometry types, as returned by
     @ref Qore::GEOS::GEOSGeometry::geometryTypeId() "GEOSGeometry::geometryTypeId()".
 
-    @since geos 1.1
+    @since geos 1.0
 */
 ///@{
 namespace Qore::GEOS;
@@ -111,7 +111,7 @@ const GEOS_GEOMETRYCOLLECTION = GEOS_GEOMETRYCOLLECTION;
     Integer constants for geometry repair methods, used with
     @ref Qore::GEOS::GEOSGeometry::makeValidWithParams() "GEOSGeometry::makeValidWithParams()".
 
-    @since geos 1.1
+    @since geos 1.0
 */
 ///@{
 namespace Qore::GEOS;
@@ -127,7 +127,7 @@ const GEOS_MAKE_VALID_STRUCTURE = GEOS_MAKE_VALID_STRUCTURE;
     @ref Qore::GEOS::GEOSGeometry::bufferWithStyle() "GEOSGeometry::bufferWithStyle()" and
     @ref Qore::GEOS::GEOSGeometry::offsetCurve() "GEOSGeometry::offsetCurve()".
 
-    @since geos 1.1
+    @since geos 1.0
 */
 ///@{
 namespace Qore::GEOS;
@@ -349,7 +349,7 @@ GEOSGeometry pt = geos_create_point(1.0, 2.0);
 
     @throw GEOS-ERROR error creating point
 
-    @since geos 1.1
+    @since geos 1.0
 */
 GEOSGeometry geos_create_point(float x, float y) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -377,7 +377,7 @@ GEOSGeometry pt3d = geos_create_point(1.0, 2.0, 3.0);
 
     @throw GEOS-ERROR error creating point
 
-    @since geos 1.1
+    @since geos 1.0
 */
 GEOSGeometry geos_create_point(float x, float y, float z) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -413,7 +413,7 @@ GEOSGeometry line = geos_create_linestring((
 
     @throw GEOS-ERROR error creating linestring or fewer than 2 coordinates
 
-    @since geos 1.1
+    @since geos 1.0
 */
 GEOSGeometry geos_create_linestring(list coords) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -457,7 +457,7 @@ GEOSGeometry poly_with_hole = geos_create_polygon(ring, (hole,));
 
     @throw GEOS-ERROR error creating polygon or invalid ring
 
-    @since geos 1.1
+    @since geos 1.0
 */
 GEOSGeometry geos_create_polygon(list exterior, *list holes) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -544,7 +544,7 @@ GEOSGeometry mp = geos_create_collection(
 
     @throw GEOS-ERROR error creating collection or invalid type
 
-    @since geos 1.1
+    @since geos 1.0
 */
 GEOSGeometry geos_create_collection(list geoms, int type) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -609,7 +609,7 @@ assertTrue(empty.isEmpty());
 
     @throw GEOS-ERROR error creating empty collection
 
-    @since geos 1.1
+    @since geos 1.0
 */
 GEOSGeometry geos_create_empty_collection(int type) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -637,7 +637,7 @@ bool is_within = geos_relate_pattern_match(matrix, "T*F**F***");
 
     @throw GEOS-ERROR error matching pattern
 
-    @since geos 1.1
+    @since geos 1.0
 */
 bool geos_relate_pattern_match(string matrix, string pattern) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -663,7 +663,7 @@ GEOSGeometry geom = parse_geojson('{"type": "Point", "coordinates": [1.0, 2.0]}'
 
     @throw GEOS-ERROR error parsing GeoJSON string
 
-    @since geos 1.1
+    @since geos 1.0
 */
 GEOSGeometry parse_geojson(string geojson) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -697,7 +697,7 @@ string pretty = make_geojson(geom, 2);
 
     @throw GEOS-ERROR error writing GeoJSON
 
-    @since geos 1.1
+    @since geos 1.0
 */
 string make_geojson(GEOSGeometry[QoreGEOSGeometry] geom, int indent = -1) {
     GEOSContextHandle_t ctx = geos_get_context();
@@ -735,7 +735,7 @@ assertEq(200.0, rect.area());
 
     @throw GEOS-ERROR error creating rectangle
 
-    @since geos 1.1
+    @since geos 1.0
 */
 GEOSGeometry geos_create_rectangle(float xmin, float ymin, float xmax, float ymax) {
     GEOSContextHandle_t ctx = geos_get_context();

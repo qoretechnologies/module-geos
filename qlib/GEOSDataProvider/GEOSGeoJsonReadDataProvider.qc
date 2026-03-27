@@ -46,7 +46,7 @@ public namespace GEOSDataProvider {
     map printf("line %d: %s (%s)\n", $1.line_number, $1.geometry, $1.type), i;
     @endcode
 
-    @since geos 1.1
+    @since geos 1.0
 */
 public class GEOSGeoJsonReadDataProvider inherits DataProvider::AbstractDataProvider {
     public {

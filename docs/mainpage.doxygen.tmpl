@@ -38,8 +38,8 @@
     - @ref Qore::GEOS::GEOSWKTWriter "GEOSWKTWriter" - WKT serialization with formatting options
     - @ref Qore::GEOS::GEOSWKBReader "GEOSWKBReader" - WKB parsing (binary and hex)
     - @ref Qore::GEOS::GEOSWKBWriter "GEOSWKBWriter" - WKB serialization (binary and hex)
-    - @ref Qore::GEOS::GEOSGeoJSONReader "GEOSGeoJSONReader" - GeoJSON parsing (since 1.1)
-    - @ref Qore::GEOS::GEOSGeoJSONWriter "GEOSGeoJSONWriter" - GeoJSON serialization (since 1.1)
+    - @ref Qore::GEOS::GEOSGeoJSONReader "GEOSGeoJSONReader" - GeoJSON parsing
+    - @ref Qore::GEOS::GEOSGeoJSONWriter "GEOSGeoJSONWriter" - GeoJSON serialization
 
     @section geosfunctions Standalone Functions
 
@@ -49,19 +49,19 @@
     - @ref Qore::GEOS::make_wkt() "make_wkt()" - Convenience WKT serialization
     - @ref Qore::GEOS::parse_wkb() "parse_wkb()" - Convenience WKB parsing
     - @ref Qore::GEOS::make_wkb() "make_wkb()" - Convenience WKB serialization
-    - @ref Qore::GEOS::parse_geojson() "parse_geojson()" - Convenience GeoJSON parsing (since 1.1)
-    - @ref Qore::GEOS::make_geojson() "make_geojson()" - Convenience GeoJSON serialization (since 1.1)
-    - @ref Qore::GEOS::geos_create_point() "geos_create_point()" - Create point from coordinates (since 1.1)
-    - @ref Qore::GEOS::geos_create_linestring() "geos_create_linestring()" - Create linestring from coordinates (since 1.1)
-    - @ref Qore::GEOS::geos_create_polygon() "geos_create_polygon()" - Create polygon from coordinate rings (since 1.1)
-    - @ref Qore::GEOS::geos_create_collection() "geos_create_collection()" - Create geometry collection (since 1.1)
-    - @ref Qore::GEOS::geos_create_empty_collection() "geos_create_empty_collection()" - Create empty collection (since 1.1)
-    - @ref Qore::GEOS::geos_create_rectangle() "geos_create_rectangle()" - Create rectangle from bounds (since 1.1)
-    - @ref Qore::GEOS::geos_relate_pattern_match() "geos_relate_pattern_match()" - Test DE-9IM pattern match (since 1.1)
-    - @ref Qore::GEOS::geos_polygonize() "geos_polygonize()" - Build polygons from linework (since 1.1)
-    - @ref Qore::GEOS::geos_cluster_dbscan() "geos_cluster_dbscan()" - DBSCAN spatial clustering (since 1.1)
-    - @ref Qore::GEOS::geos_orientation_index() "geos_orientation_index()" - Point orientation test (since 1.1)
-    - @ref Qore::GEOS::geos_segment_intersection() "geos_segment_intersection()" - Line segment intersection (since 1.1)
+    - @ref Qore::GEOS::parse_geojson() "parse_geojson()" - Convenience GeoJSON parsing
+    - @ref Qore::GEOS::make_geojson() "make_geojson()" - Convenience GeoJSON serialization
+    - @ref Qore::GEOS::geos_create_point() "geos_create_point()" - Create point from coordinates
+    - @ref Qore::GEOS::geos_create_linestring() "geos_create_linestring()" - Create linestring from coordinates
+    - @ref Qore::GEOS::geos_create_polygon() "geos_create_polygon()" - Create polygon from coordinate rings
+    - @ref Qore::GEOS::geos_create_collection() "geos_create_collection()" - Create geometry collection
+    - @ref Qore::GEOS::geos_create_empty_collection() "geos_create_empty_collection()" - Create empty collection
+    - @ref Qore::GEOS::geos_create_rectangle() "geos_create_rectangle()" - Create rectangle from bounds
+    - @ref Qore::GEOS::geos_relate_pattern_match() "geos_relate_pattern_match()" - Test DE-9IM pattern match
+    - @ref Qore::GEOS::geos_polygonize() "geos_polygonize()" - Build polygons from linework
+    - @ref Qore::GEOS::geos_cluster_dbscan() "geos_cluster_dbscan()" - DBSCAN spatial clustering
+    - @ref Qore::GEOS::geos_orientation_index() "geos_orientation_index()" - Point orientation test
+    - @ref Qore::GEOS::geos_segment_intersection() "geos_segment_intersection()" - Line segment intersection
 
     @section geosconstants Constants
 
@@ -97,21 +97,21 @@ printf("area: %y\n", poly.area());                # 100.0
 printf("centroid: %y\n", make_wkt(poly.centroid())); # "POINT (5 5)"
     @endcode
 
-    @par Create geometries programmatically (since 1.1):
+    @par Create geometries programmatically:
     @code{.py}
 GEOSGeometry pt = geos_create_point(1.0, 2.0);
 GEOSGeometry rect = geos_create_rectangle(0, 0, 10, 20);
 GEOSGeometry line = geos_create_linestring(({"x": 0, "y": 0}, {"x": 10, "y": 10}));
     @endcode
 
-    @par Use GeoJSON I/O (since 1.1):
+    @par Use GeoJSON I/O:
     @code{.py}
 GEOSGeometry geom = parse_geojson('{"type":"Point","coordinates":[1,2]}');
 string json = make_geojson(geom);
 string json_pretty = geom.toGeoJSON(2);  # pretty-printed
     @endcode
 
-    @par Simplify and validate geometries (since 1.1):
+    @par Simplify and validate geometries:
     @code{.py}
 GEOSGeometry invalid = parse_wkt("POLYGON ((0 0, 10 10, 0 10, 10 0, 0 0))");
 printf("valid: %y (%s)\n", invalid.isValid(), invalid.isValidReason());
@@ -142,7 +142,7 @@ list<auto> results = tree.query(parse_wkt("POLYGON ((0 0, 5 0, 5 5, 0 5, 0 0))")
 # results contains "A" and "B"
     @endcode
 
-    @par Transform coordinates with a callback (since 1.1):
+    @par Transform coordinates with a callback:
     @code{.py}
 GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
 # shift all coordinates by (100, 200)
@@ -162,7 +162,7 @@ map printf("%s: %s\n", $1.type, $1.geometry), provider.searchRecords();
 GEOSWkbWriteDataProvider writer({"path": "output.wkb"});
 writer.createRecord({"geometry": "POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))"});
 
-# Read/write GeoJSON (since 1.1)
+# Read/write GeoJSON
 GEOSGeoJsonReadDataProvider json_reader({"data": '{"type":"Point","coordinates":[1,2]}'});
 map printf("%s\n", $1.type), json_reader.searchRecords();
     @endcode
@@ -198,60 +198,22 @@ map printf("%s\n", $1.type), json_reader.searchRecords();
 
     @section geosreleasenotes Release Notes
 
-    @subsection geos_1_1 geos Module Version 1.1
-
-    <b>New Features and Bug Fixes</b>
-    - <b>Programmatic geometry construction</b>: geos_create_point(), geos_create_linestring(),
-      geos_create_polygon(), geos_create_collection(), geos_create_empty_collection(),
-      geos_create_rectangle()
-    - <b>GeoJSON I/O</b>: GEOSGeoJSONReader, GEOSGeoJSONWriter classes; parse_geojson(),
-      make_geojson() convenience functions; GEOSGeometry::toGeoJSON() method;
-      GeoJSON DataProvider read/write classes for data pipeline integration
-    - <b>Geometry properties</b>: isRing(), isClosed(), hasZ(), geometryTypeId(), getDimensions(),
-      getXMin/YMin/XMax/YMax(), getExtent(), getX/Y/Z(), normalize(), equalsExact()
-    - <b>Polygon decomposition</b>: getExteriorRing(), getInteriorRingN(), getNumInteriorRings(),
-      getStartPoint(), getEndPoint(), getPointN()
-    - <b>Validity and repair</b>: isValidReason(), isValidDetail(), makeValid(),
-      makeValidWithParams(), pointOnSurface()
-    - <b>Simplification</b>: simplify(), topologyPreserveSimplify()
-    - <b>DE-9IM spatial relationships</b>: relate(), relatePattern(), geos_relate_pattern_match()
-    - <b>Buffer with style</b>: bufferWithStyle(), offsetCurve() with cap/join style constants
-    - <b>Distance metrics</b>: hausdorffDistance(), hausdorffDistanceDensify(),
-      frechetDistance(), frechetDistanceDensify(), distanceWithin(), distanceIndexed()
-    - <b>Unary union</b>: unaryUnion() for dissolving geometry collections
-    - <b>Line operations</b>: lineMerge(), lineMergeDirected(), lineSubstring(), reverse(),
-      node(), clipByRect(), snap()
-    - <b>Triangulation and Voronoi</b>: delaunayTriangulation(),
-      constrainedDelaunayTriangulation(), voronoiDiagram()
-    - <b>Hull operations</b>: concaveHull(), concaveHullByLength(), polygonHullSimplify()
-    - <b>Advanced analysis</b>: maximumInscribedCircle(), largestEmptyCircle(),
-      minimumRotatedRectangle(), minimumWidth(), minimumBoundingCircle(),
-      minimumClearance(), minimumClearanceLine()
-    - <b>Polygonize and precision</b>: geos_polygonize(), buildArea(), setPrecision(),
-      getPrecision()
-    - <b>Coordinate transformation</b>: transformXY() with Qore closure callback
-    - <b>Clustering</b>: geos_cluster_dbscan() DBSCAN spatial clustering
-    - <b>Coverage operations</b>: coverageUnion(), coverageSimplifyVW(), coverageIsValid()
-    - <b>Prepared geometry</b>: 12 additional predicates (within, touches, crosses, overlaps,
-      disjoint, distance, distanceWithin, containsXY, intersectsXY, nearestPoints,
-      relate, relatePattern)
-    - <b>STRtree enhancements</b>: build(), iterate()
-    - <b>Misc utilities</b>: extractUniquePoints(), sharedPaths(), removeRepeatedPoints(),
-      densify(), geos_orientation_index(), geos_segment_intersection()
-    - <b>Constants</b>: geometry type IDs, MakeValid methods, buffer cap/join styles
-    - <b>Hashdecls</b>: GEOSExtent
-
     @subsection geos_1_0 geos Module Version 1.0
 
     <b>New Features and Bug Fixes</b>
     - Initial release
     - Classes: GEOSGeometry, GEOSPreparedGeometry, GEOSSTRtree, GEOSWKTReader,
-      GEOSWKTWriter, GEOSWKBReader, GEOSWKBWriter
+      GEOSWKTWriter, GEOSWKBReader, GEOSWKBWriter, GEOSGeoJSONReader, GEOSGeoJSONWriter
     - Standalone functions: geos_version(), get_geos_info(), parse_wkt(), make_wkt(),
-      parse_wkb(), make_wkb()
-    - Hashdecls: GEOSCoordinate, GEOSVersionInfo
+      parse_wkb(), make_wkb(), parse_geojson(), make_geojson(), geos_create_point(),
+      geos_create_linestring(), geos_create_polygon(), geos_create_collection(),
+      geos_create_empty_collection(), geos_create_rectangle(), geos_relate_pattern_match(),
+      geos_polygonize(), geos_cluster_dbscan(), geos_orientation_index(),
+      geos_segment_intersection()
+    - Hashdecls: GEOSCoordinate, GEOSVersionInfo, GEOSExtent
+    - Constants: geometry type IDs, MakeValid methods, buffer cap/join styles
     - Thread-safe implementation using reentrant GEOS C API
-    - Cooperative cancellation support in STRtree queries
-    - @ref geosdataproviderintro "GEOSDataProvider" separated module with WKT and WKB data providers
-      for use in data pipelines
+    - Cooperative cancellation support in STRtree queries and coordinate sequence construction
+    - @ref geosdataproviderintro "GEOSDataProvider" separated module with WKT, WKB, and GeoJSON
+      data providers for use in data pipelines
 */
