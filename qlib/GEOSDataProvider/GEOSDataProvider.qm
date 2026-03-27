@@ -229,8 +229,8 @@ namespace Priv {
             "name": GEOSDataProvider::AppName,
             "display_name": "GEOS Geometry",
             "short_desc": "Read and write GEOS geometry data in WKT/WKB/GeoJSON formats",
-            "desc": "Read and write GEOS geometry data in WKT (Well-Known Text) and WKB (Well-Known Binary) "
-                "formats for use in GIS data pipelines",
+            "desc": "Read and write GEOS geometry data in WKT (Well-Known Text), WKB (Well-Known Binary), "
+                "and GeoJSON formats for use in GIS data pipelines",
             "logo": GEOSDataProvider::GEOSLogo,
             "logo_file_name": "geos-logo.svg",
             "logo_mime_type": MimeTypeSvg,
@@ -248,6 +248,7 @@ namespace Priv {
             "desc": "Read WKT geometry data from a file location",
             "action_code": DPAT_FIND,
             "cls": "GEOSDataProvider::GEOSWktReadDataProvider",
+            "output_type": GEOSWktReadDataProvider::RecordType,
             "options": DataProviderActionCatalog::getActionOptionFromFields(
                 GEOSWktReadDataProvider::ConstructorOptions{"path",}, {
                     "preselected": True,
@@ -292,6 +293,7 @@ namespace Priv {
             "desc": "Read WKB geometry data from a file location",
             "action_code": DPAT_FIND,
             "cls": "GEOSDataProvider::GEOSWkbReadDataProvider",
+            "output_type": GEOSWkbReadDataProvider::RecordType,
             "options": DataProviderActionCatalog::getActionOptionFromFields(
                 GEOSWkbReadDataProvider::ConstructorOptions{"path",}, {
                     "preselected": True,
@@ -322,6 +324,51 @@ namespace Priv {
                 }
             ) + DataProviderActionCatalog::getActionOptionFromFields(
                 GEOSWkbWriteDataProvider::ConstructorOptions - ("path", "stream"), {
+                    "loc": "constructor",
+                }
+            ),
+        });
+        DataProviderActionCatalog::registerAction(<DataProviderActionInfo>{
+            "app": GEOSDataProvider::AppName,
+            "path": "/",
+            "action": "read-geojson",
+            "subtype": "geosgeojsonread",
+            "display_name": "Read GeoJSON File",
+            "short_desc": "Read GeoJSON geometry data from a file",
+            "desc": "Read GeoJSON geometry data from a file location (line-delimited GeoJSON format)",
+            "action_code": DPAT_FIND,
+            "cls": "GEOSDataProvider::GEOSGeoJsonReadDataProvider",
+            "output_type": GEOSGeoJsonReadDataProvider::RecordType,
+            "options": DataProviderActionCatalog::getActionOptionFromFields(
+                GEOSGeoJsonReadDataProvider::ConstructorOptions{"path",}, {
+                    "preselected": True,
+                    "required": True,
+                    "loc": "constructor",
+                }
+            ) + DataProviderActionCatalog::getActionOptionFromFields(
+                GEOSGeoJsonReadDataProvider::ConstructorOptions - ("path", "data", "stream"), {
+                    "loc": "constructor",
+                }
+            ),
+        });
+        DataProviderActionCatalog::registerAction(<DataProviderActionInfo>{
+            "app": GEOSDataProvider::AppName,
+            "path": "/",
+            "action": "write-geojson",
+            "subtype": "geosgeojsonwrite",
+            "display_name": "Write GeoJSON File",
+            "short_desc": "Write GeoJSON geometry data to a file",
+            "desc": "Write GeoJSON geometry data to a file location (line-delimited GeoJSON format)",
+            "action_code": DPAT_CREATE,
+            "cls": "GEOSDataProvider::GEOSGeoJsonWriteDataProvider",
+            "options": DataProviderActionCatalog::getActionOptionFromFields(
+                GEOSGeoJsonWriteDataProvider::ConstructorOptions{"path",}, {
+                    "preselected": True,
+                    "required": True,
+                    "loc": "constructor",
+                }
+            ) + DataProviderActionCatalog::getActionOptionFromFields(
+                GEOSGeoJsonWriteDataProvider::ConstructorOptions - ("path", "stream"), {
                     "loc": "constructor",
                 }
             ),
