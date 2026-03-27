@@ -1,0 +1,86 @@
+/* -*- mode: c++; indent-tabs-mode: nil -*- */
+/*
+    QC_GEOSGeoJSONWriter.qpp
+
+    Qore Programming Language
+
+    Copyright (C) 2026 Qore Technologies, s.r.o.
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+
+#include "QC_GEOSGeoJSONWriter.h"
+#include "QC_GEOSGeometry.h"
+
+//! GeoJSON writer for serializing geometries to GeoJSON strings
+/** @par Example:
+    @code{.py}
+GEOSGeoJSONWriter writer();
+string json = writer.write(geom, 2); # pretty-printed with 2-space indent
+    @endcode
+
+    @note Writing GeoJSON Feature or FeatureCollection is not supported; only
+    geometry objects are written.
+
+    @since geos 1.1
+*/
+qclass GEOSGeoJSONWriter [arg=QoreGEOSGeoJSONWriter* w; ns=Qore::GEOS];
+
+//! Creates a new GeoJSON writer
+/**
+*/
+GEOSGeoJSONWriter::constructor() {
+    self->setPrivate(CID_GEOSGEOJSONWRITER, new QoreGEOSGeoJSONWriter());
+}
+
+//! Writes a geometry to a GeoJSON string
+/** @param geom the geometry to serialize
+    @param indent the number of spaces for indentation (-1 for compact output)
+    @return the GeoJSON string
+
+    @throw GEOS-ERROR error writing GeoJSON
+*/
+string GEOSGeoJSONWriter::write(GEOSGeometry[QoreGEOSGeometry] geom, int indent = -1) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char* json = GEOSGeoJSONWriter_writeGeometry_r(ctx, w->getWriter(), geom->getGeometry(), indent);
+    if (!json) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "GeoJSONWriter::write")) {
+            xsink->raiseException("GEOS-ERROR", "error writing GeoJSON");
+        }
+        return QoreValue();
+    }
+    QoreStringNode* rv = new QoreStringNode(json);
+    GEOSFree_r(ctx, json);
+    return rv;
+}
+
+//! Sets the output dimension (2 or 3)
+/** @param dim the output dimension (2 for 2D, 3 for 3D)
+*/
+nothing GEOSGeoJSONWriter::setOutputDimension(int dim) {
+    GEOSGeoJSONWriter_setOutputDimension_r(geos_get_context(), w->getWriter(), dim);
+}
+
+//! Returns the current output dimension
+/** @return the output dimension (2 or 3)
+*/
+int GEOSGeoJSONWriter::getOutputDimension() [flags=RET_VALUE_ONLY] {
+    return GEOSGeoJSONWriter_getOutputDimension_r(geos_get_context(), w->getWriter());
+}

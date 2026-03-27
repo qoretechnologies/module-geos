@@ -82,7 +82,54 @@ bool check_geos_error(ExceptionSink* xsink, const char* err_code, const char* de
 // hashdecl pointers
 const TypedHashDecl* hashdeclGEOSCoordinate = nullptr;
 const TypedHashDecl* hashdeclGEOSVersionInfo = nullptr;
+const TypedHashDecl* hashdeclGEOSExtent = nullptr;
 
+
+GEOSCoordSequence* qore_list_to_coordseq(GEOSContextHandle_t ctx, const QoreListNode* l,
+    ExceptionSink* xsink) {
+    size_t size = l->size();
+    if (!size) {
+        xsink->raiseException("GEOS-ERROR", "coordinate list must not be empty");
+        return nullptr;
+    }
+
+    // check first element for Z dimension
+    const QoreHashNode* first = l->retrieveEntry(0).get<const QoreHashNode>();
+    bool has_z = false;
+    if (first) {
+        QoreValue zv = first->getKeyValue("z");
+        has_z = !zv.isNullOrNothing();
+    }
+
+    unsigned int dims = has_z ? 3 : 2;
+    GEOSCoordSequence* cs = GEOSCoordSeq_create_r(ctx, size, dims);
+    if (!cs) {
+        xsink->raiseException("GEOS-ERROR", "failed to create coordinate sequence");
+        return nullptr;
+    }
+
+    for (size_t i = 0; i < size; ++i) {
+        if (!(i % 100) && qore_check_cancel(xsink)) {
+            GEOSCoordSeq_destroy_r(ctx, cs);
+            return nullptr;
+        }
+        const QoreHashNode* h = l->retrieveEntry(i).get<const QoreHashNode>();
+        if (!h) {
+            GEOSCoordSeq_destroy_r(ctx, cs);
+            xsink->raiseException("GEOS-ERROR", "coordinate list element %zu is not a hash", i);
+            return nullptr;
+        }
+        double x = h->getKeyValue("x").getAsFloat();
+        double y = h->getKeyValue("y").getAsFloat();
+        if (has_z) {
+            double z = h->getKeyValue("z").getAsFloat();
+            GEOSCoordSeq_setXYZ_r(ctx, cs, i, x, y, z);
+        } else {
+            GEOSCoordSeq_setXY_r(ctx, cs, i, x, y);
+        }
+    }
+    return cs;
+}
 
 QoreNamespace GNS("Qore::GEOS");
 
@@ -90,6 +137,7 @@ static void geos_module_init(QoreModuleInitContext& ctx, ExceptionSink& xsink) {
     // add hashdecls first (referenced by classes and functions)
     hashdeclGEOSCoordinate = init_hashdecl_GEOSCoordinate(GNS);
     hashdeclGEOSVersionInfo = init_hashdecl_GEOSVersionInfo(GNS);
+    hashdeclGEOSExtent = init_hashdecl_GEOSExtent(GNS);
     // add GEOSGeometry first (referenced by all other classes and functions)
     QC_GEOSGEOMETRY = initGEOSGeometryClass(GNS);
     GNS.addSystemClass(QC_GEOSGEOMETRY);
@@ -106,6 +154,12 @@ static void geos_module_init(QoreModuleInitContext& ctx, ExceptionSink& xsink) {
     GNS.addSystemClass(QC_GEOSWKBREADER);
     QC_GEOSWKBWRITER = initGEOSWKBWriterClass(GNS);
     GNS.addSystemClass(QC_GEOSWKBWRITER);
+    QC_GEOSGEOJSONREADER = initGEOSGeoJSONReaderClass(GNS);
+    GNS.addSystemClass(QC_GEOSGEOJSONREADER);
+    QC_GEOSGEOJSONWRITER = initGEOSGeoJSONWriterClass(GNS);
+    GNS.addSystemClass(QC_GEOSGEOJSONWRITER);
+    // add constants
+    init_geos_constants(GNS);
     // add functions last (reference both hashdecls and classes)
     init_geos_functions(GNS);
 }

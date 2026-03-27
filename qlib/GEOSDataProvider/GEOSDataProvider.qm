@@ -221,12 +221,14 @@ namespace Priv {
         DataProvider::registerFactory(new GEOSWktWriteDataProviderFactory());
         DataProvider::registerFactory(new GEOSWkbReadDataProviderFactory());
         DataProvider::registerFactory(new GEOSWkbWriteDataProviderFactory());
+        DataProvider::registerFactory(new GEOSGeoJsonReadDataProviderFactory());
+        DataProvider::registerFactory(new GEOSGeoJsonWriteDataProviderFactory());
 
         # register the data provider application
         DataProviderActionCatalog::registerApp(<DataProviderAppInfo>{
             "name": GEOSDataProvider::AppName,
             "display_name": "GEOS Geometry",
-            "short_desc": "Read and write GEOS geometry data in WKT/WKB formats",
+            "short_desc": "Read and write GEOS geometry data in WKT/WKB/GeoJSON formats",
             "desc": "Read and write GEOS geometry data in WKT (Well-Known Text) and WKB (Well-Known Binary) "
                 "formats for use in GIS data pipelines",
             "logo": GEOSDataProvider::GEOSLogo,

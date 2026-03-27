@@ -32,6 +32,17 @@ public class GeosTest inherits QUnit::Test {
         addTestCase("empty geometries", \emptyGeometryTests());
         addTestCase("Z coordinates", \zCoordinateTests());
         addTestCase("negative tests", \negativeTests());
+        addTestCase("GeoJSON I/O", \geojsonTests());
+        addTestCase("relate and buffer style", \relateBufferStyleTests());
+        addTestCase("validity and simplification", \validitySimplificationTests());
+        addTestCase("programmatic construction", \programmaticConstructionTests());
+        addTestCase("geometry type constants", \geometryTypeConstantTests());
+        addTestCase("geometry boolean properties", \booleanPropertyTests());
+        addTestCase("geometry dimensions and bounds", \dimensionBoundsTests());
+        addTestCase("point coordinate access", \pointCoordinateAccessTests());
+        addTestCase("normalize and equalsExact", \normalizeEqualsExactTests());
+        addTestCase("polygon decomposition", \polygonDecompositionTests());
+        addTestCase("linestring point access", \linestringPointAccessTests());
 
         set_return_value(main());
     }
@@ -591,6 +602,645 @@ public class GeosTest inherits QUnit::Test {
         assertFloatEq(30.0, coords[2].z, "3D line third z");
     }
 
+    geojsonTests() {
+        # GeoJSONReader: parse point
+        GEOSGeoJSONReader reader();
+        GEOSGeometry pt = reader.read('{"type":"Point","coordinates":[1.0,2.0]}');
+        assertEq("Point", pt.geometryType(), "GeoJSON read point type");
+        assertFloatEq(1.0, pt.getX(), "GeoJSON read point X");
+        assertFloatEq(2.0, pt.getY(), "GeoJSON read point Y");
+
+        # GeoJSONReader: parse linestring
+        GEOSGeometry line = reader.read('{"type":"LineString","coordinates":[[0,0],[10,10],[20,25]]}');
+        assertEq("LineString", line.geometryType(), "GeoJSON read linestring");
+        assertEq(3, line.numPoints(), "GeoJSON read linestring points");
+
+        # GeoJSONReader: parse polygon
+        GEOSGeometry poly = reader.read(
+            '{"type":"Polygon","coordinates":[[[0,0],[10,0],[10,10],[0,10],[0,0]]]}');
+        assertEq("Polygon", poly.geometryType(), "GeoJSON read polygon");
+        assertFloatEq(100.0, poly.area(), "GeoJSON read polygon area");
+
+        # GeoJSONReader: parse MultiPoint
+        GEOSGeometry mp = reader.read('{"type":"MultiPoint","coordinates":[[0,0],[1,1],[2,2]]}');
+        assertEq("MultiPoint", mp.geometryType(), "GeoJSON read multipoint");
+        assertEq(3, mp.numGeometries(), "GeoJSON read multipoint count");
+
+        # GeoJSONReader: parse GeometryCollection
+        GEOSGeometry gc = reader.read(
+            '{"type":"GeometryCollection","geometries":['
+            + '{"type":"Point","coordinates":[0,0]},'
+            + '{"type":"LineString","coordinates":[[0,0],[1,1]]}'
+            + ']}');
+        assertEq("GeometryCollection", gc.geometryType(), "GeoJSON read gc");
+        assertEq(2, gc.numGeometries(), "GeoJSON read gc count");
+
+        # GeoJSONWriter: write compact
+        GEOSGeoJSONWriter writer();
+        string json_compact = writer.write(pt);
+        assertRegex("Point", json_compact, "GeoJSON write contains Point");
+        assertRegex("coordinates", json_compact, "GeoJSON write contains coordinates");
+
+        # GeoJSONWriter: write with indent
+        string json_pretty = writer.write(pt, 2);
+        assertRegex("\\n", json_pretty, "GeoJSON pretty has newlines");
+
+        # GeoJSONWriter: output dimension
+        int default_dim = writer.getOutputDimension();
+        assertTrue(default_dim >= 2 && default_dim <= 3, "default output dimension is 2 or 3");
+        writer.setOutputDimension(2);
+        assertEq(2, writer.getOutputDimension(), "set output dimension 2");
+        writer.setOutputDimension(3);
+        assertEq(3, writer.getOutputDimension(), "set output dimension 3");
+
+        # toGeoJSON method on geometry
+        string json_method = poly.toGeoJSON();
+        assertRegex("Polygon", json_method, "toGeoJSON contains Polygon");
+        assertRegex("coordinates", json_method, "toGeoJSON contains coordinates");
+
+        # toGeoJSON with indent
+        string json_method_pretty = poly.toGeoJSON(2);
+        assertRegex("\\n", json_method_pretty, "toGeoJSON pretty has newlines");
+
+        # parse_geojson convenience function
+        GEOSGeometry pt2 = parse_geojson('{"type":"Point","coordinates":[5,10]}');
+        assertEq("Point", pt2.geometryType(), "parse_geojson type");
+        assertFloatEq(5.0, pt2.getX(), "parse_geojson X");
+
+        # make_geojson convenience function
+        string json_conv = make_geojson(pt2);
+        assertRegex("Point", json_conv, "make_geojson output");
+
+        # round-trip: geometry -> GeoJSON -> geometry
+        GEOSGeometry rt_poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        string json_rt = make_geojson(rt_poly);
+        GEOSGeometry rt_back = parse_geojson(json_rt);
+        assertTrue(rt_poly.equals(rt_back), "GeoJSON round-trip preserves geometry");
+
+        # round-trip with 3D
+        GEOSGeometry pt3d = parse_wkt("POINT Z (1 2 3)");
+        GEOSGeoJSONWriter writer3d();
+        writer3d.setOutputDimension(3);
+        string json3d = writer3d.write(pt3d);
+        GEOSGeometry pt3d_back = parse_geojson(json3d);
+        assertTrue(pt3d_back.hasZ(), "GeoJSON 3D round-trip has Z");
+
+        # negative: invalid GeoJSON
+        assertThrows("GEOS-ERROR", sub() {
+            parse_geojson("not valid json");
+        }, NOTHING, "invalid GeoJSON throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            reader.read("{invalid}");
+        }, NOTHING, "GeoJSONReader invalid throws");
+    }
+
+    relateBufferStyleTests() {
+        GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        GEOSGeometry inner = parse_wkt("POINT (5 5)");
+        GEOSGeometry outer = parse_wkt("POINT (20 20)");
+
+        # relate: returns 9-char DE-9IM string
+        string matrix = poly.relate(inner);
+        assertEq(9, matrix.size(), "relate returns 9-char string");
+
+        # relatePattern: contains pattern "T*****FF*"
+        assertTrue(poly.relatePattern(inner, "T*****FF*"), "relatePattern contains");
+
+        # relatePattern: within pattern "T*F**F***"
+        assertTrue(inner.relatePattern(poly, "T*F**F***"), "relatePattern within");
+
+        # relatePattern: disjoint
+        assertTrue(poly.relatePattern(outer, "FF*FF****"), "relatePattern disjoint");
+
+        # relatePattern: equals pattern "T*F**FFF*"
+        GEOSGeometry poly2 = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        assertTrue(poly.relatePattern(poly2, "T*F**FFF*"), "relatePattern equals");
+
+        # relatePattern: false case
+        assertFalse(poly.relatePattern(outer, "T*****FF*"), "relatePattern non-contains");
+
+        # geos_relate_pattern_match standalone function
+        assertTrue(geos_relate_pattern_match(matrix, "0F2FF1FF2"), "pattern_match exact");
+        assertTrue(geos_relate_pattern_match("0F2FF1FF2", "T*****FF*"), "pattern_match contains");
+        assertFalse(geos_relate_pattern_match("FF*FF****", "T*****FF*"), "pattern_match no match");
+
+        # buffer style constants
+        assertEq(1, GEOSBUF_CAP_ROUND, "GEOSBUF_CAP_ROUND");
+        assertEq(2, GEOSBUF_CAP_FLAT, "GEOSBUF_CAP_FLAT");
+        assertEq(3, GEOSBUF_CAP_SQUARE, "GEOSBUF_CAP_SQUARE");
+        assertEq(1, GEOSBUF_JOIN_ROUND, "GEOSBUF_JOIN_ROUND");
+        assertEq(2, GEOSBUF_JOIN_MITRE, "GEOSBUF_JOIN_MITRE");
+        assertEq(3, GEOSBUF_JOIN_BEVEL, "GEOSBUF_JOIN_BEVEL");
+
+        # bufferWithStyle: flat caps vs round caps produce different results
+        GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 0)");
+        GEOSGeometry buf_round = line.bufferWithStyle(2.0, 8, GEOSBUF_CAP_ROUND, GEOSBUF_JOIN_ROUND, 5.0);
+        GEOSGeometry buf_flat = line.bufferWithStyle(2.0, 8, GEOSBUF_CAP_FLAT, GEOSBUF_JOIN_ROUND, 5.0);
+        assertEq("Polygon", buf_round.geometryType(), "bufferWithStyle round type");
+        assertEq("Polygon", buf_flat.geometryType(), "bufferWithStyle flat type");
+        # flat buffer should have smaller area than round (no semicircular end caps)
+        assertGt(buf_flat.area(), buf_round.area(), "round buffer larger than flat");
+
+        # bufferWithStyle: square caps
+        GEOSGeometry buf_square = line.bufferWithStyle(2.0, 8, GEOSBUF_CAP_SQUARE, GEOSBUF_JOIN_ROUND, 5.0);
+        assertEq("Polygon", buf_square.geometryType(), "bufferWithStyle square type");
+        # square cap: the end caps extend by width, so area = (10+2+2) * 4 = 56
+        assertFloatEq(56.0, buf_square.area(), "square buffer area");
+
+        # flat cap: area = 10 * 4 = 40
+        assertFloatEq(40.0, buf_flat.area(), "flat buffer area");
+
+        # offsetCurve: offset a linestring
+        GEOSGeometry offset_left = line.offsetCurve(2.0);
+        assertEq("LineString", offset_left.geometryType(), "offsetCurve type");
+        # the offset line should be at y=2
+        hash<GEOSCoordinate> oc = offset_left.getStartPoint().getCoordinate();
+        assertFloatEq(2.0, oc.y, "offsetCurve left at y=2");
+
+        GEOSGeometry offset_right = line.offsetCurve(-2.0);
+        hash<GEOSCoordinate> oc2 = offset_right.getStartPoint().getCoordinate();
+        assertFloatEq(-2.0, oc2.y, "offsetCurve right at y=-2");
+
+        # offsetCurve on polygon returns offset of the boundary (GEOS 3.14+)
+        GEOSGeometry poly_offset = poly.offsetCurve(1.0);
+        assertTrue(poly_offset.numPoints() > 0, "offsetCurve on polygon returns geometry");
+    }
+
+    validitySimplificationTests() {
+        # isValidReason on valid geometry
+        GEOSGeometry valid_poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        assertEq("Valid Geometry", valid_poly.isValidReason(), "valid geometry reason");
+
+        # isValidReason on invalid geometry (bowtie / self-intersecting)
+        GEOSGeometry bowtie = parse_wkt("POLYGON ((0 0, 10 10, 10 0, 0 10, 0 0))");
+        assertFalse(bowtie.isValid(), "bowtie is invalid");
+        string reason = bowtie.isValidReason();
+        assertRegex("Self-intersection", reason, "bowtie reason mentions self-intersection");
+
+        # isValidDetail on valid geometry
+        hash<auto> detail_valid = valid_poly.isValidDetail();
+        assertTrue(detail_valid.valid, "valid detail: valid=true");
+
+        # isValidDetail on invalid geometry
+        hash<auto> detail_invalid = bowtie.isValidDetail();
+        assertFalse(detail_invalid.valid, "invalid detail: valid=false");
+        assertRegex("Self-intersection", detail_invalid.reason, "invalid detail reason");
+        assertEq("Point", detail_invalid.location.geometryType(), "invalid detail location is Point");
+
+        # makeValid on bowtie
+        GEOSGeometry fixed = bowtie.makeValid();
+        assertTrue(fixed.isValid(), "makeValid produces valid geometry");
+        assertEq("Valid Geometry", fixed.isValidReason(), "makeValid result reason");
+
+        # makeValid on already-valid geometry returns equivalent
+        GEOSGeometry fixed2 = valid_poly.makeValid();
+        assertTrue(fixed2.isValid(), "makeValid on valid returns valid");
+        assertTrue(valid_poly.equals(fixed2), "makeValid on valid preserves geometry");
+
+        # makeValidWithParams with LINEWORK
+        GEOSGeometry fixed_lw = bowtie.makeValidWithParams(GEOS_MAKE_VALID_LINEWORK);
+        assertTrue(fixed_lw.isValid(), "makeValidWithParams LINEWORK valid");
+
+        # makeValidWithParams with STRUCTURE
+        GEOSGeometry fixed_st = bowtie.makeValidWithParams(GEOS_MAKE_VALID_STRUCTURE);
+        assertTrue(fixed_st.isValid(), "makeValidWithParams STRUCTURE valid");
+
+        # constants exist
+        assertEq(0, GEOS_MAKE_VALID_LINEWORK, "GEOS_MAKE_VALID_LINEWORK constant");
+        assertEq(1, GEOS_MAKE_VALID_STRUCTURE, "GEOS_MAKE_VALID_STRUCTURE constant");
+
+        # simplify: complex linestring
+        GEOSGeometry complex_line = parse_wkt(
+            "LINESTRING (0 0, 1 0.1, 2 -0.1, 3 0.05, 4 0, 5 0.2, 10 0, 20 0, 30 0)");
+        int orig_points = complex_line.numPoints();
+        GEOSGeometry simple_line = complex_line.simplify(0.5);
+        assertTrue(simple_line.numPoints() < orig_points, "simplify reduces points");
+        assertTrue(simple_line.numPoints() >= 2, "simplify keeps at least 2 points");
+
+        # simplify with tolerance 0 returns a valid geometry with same or fewer points
+        GEOSGeometry same_line = complex_line.simplify(0.0);
+        assertTrue(same_line.numPoints() >= 2, "simplify tol=0 keeps at least 2 points");
+        assertTrue(same_line.numPoints() <= orig_points, "simplify tol=0 doesn't add points");
+
+        # topologyPreserveSimplify
+        GEOSGeometry complex_poly = parse_wkt(
+            "POLYGON ((0 0, 1 0.1, 2 -0.1, 3 0.05, 4 0, 5 0.2, 10 0, 10 10, 0 10, 0 0))");
+        GEOSGeometry simple_poly = complex_poly.topologyPreserveSimplify(0.5);
+        assertTrue(simple_poly.isValid(), "topologyPreserveSimplify preserves validity");
+        assertTrue(simple_poly.numPoints() <= complex_poly.numPoints(),
+            "topologyPreserveSimplify reduces or keeps points");
+
+        # pointOnSurface: polygon
+        GEOSGeometry pos = valid_poly.pointOnSurface();
+        assertEq("Point", pos.geometryType(), "pointOnSurface returns Point");
+        # the point must be inside or on the boundary
+        assertTrue(valid_poly.contains(pos) || valid_poly.touches(pos),
+            "pointOnSurface is inside polygon");
+
+        # pointOnSurface: concave polygon (centroid might be outside)
+        GEOSGeometry concave = parse_wkt(
+            "POLYGON ((0 0, 10 0, 10 10, 5 5, 0 10, 0 0))");
+        GEOSGeometry pos_concave = concave.pointOnSurface();
+        assertTrue(concave.contains(pos_concave) || concave.touches(pos_concave),
+            "pointOnSurface inside concave polygon");
+
+        # pointOnSurface: linestring
+        GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 0)");
+        GEOSGeometry pos_line = line.pointOnSurface();
+        assertEq("Point", pos_line.geometryType(), "pointOnSurface on line returns Point");
+    }
+
+    programmaticConstructionTests() {
+        # create 2D point
+        GEOSGeometry pt = geos_create_point(3.5, 7.2);
+        assertEq("Point", pt.geometryType(), "create_point type");
+        assertFloatEq(3.5, pt.getX(), "create_point X");
+        assertFloatEq(7.2, pt.getY(), "create_point Y");
+        assertFalse(pt.hasZ(), "create_point 2D has no Z");
+
+        # create 3D point
+        GEOSGeometry pt3d = geos_create_point(1.0, 2.0, 3.0);
+        assertEq("Point", pt3d.geometryType(), "create_point_3d type");
+        assertFloatEq(1.0, pt3d.getX(), "create_point_3d X");
+        assertFloatEq(2.0, pt3d.getY(), "create_point_3d Y");
+        assertFloatEq(3.0, pt3d.getZ(), "create_point_3d Z");
+        assertTrue(pt3d.hasZ(), "create_point_3d has Z");
+
+        # create linestring
+        auto line_coords = (
+            {"x": 0.0, "y": 0.0},
+            {"x": 10.0, "y": 0.0},
+            {"x": 10.0, "y": 10.0},
+        );
+        GEOSGeometry line = geos_create_linestring(line_coords);
+        assertEq("LineString", line.geometryType(), "create_linestring type");
+        assertEq(3, line.numPoints(), "create_linestring numPoints");
+
+        # round-trip: verify coords match
+        hash<GEOSCoordinate> c0 = line.getPointN(0).getCoordinate();
+        assertFloatEq(0.0, c0.x, "create_linestring p0.x");
+        assertFloatEq(0.0, c0.y, "create_linestring p0.y");
+        hash<GEOSCoordinate> c2 = line.getPointN(2).getCoordinate();
+        assertFloatEq(10.0, c2.x, "create_linestring p2.x");
+        assertFloatEq(10.0, c2.y, "create_linestring p2.y");
+
+        # create 3D linestring
+        auto line3d_coords = (
+            {"x": 0.0, "y": 0.0, "z": 1.0},
+            {"x": 10.0, "y": 0.0, "z": 2.0},
+        );
+        GEOSGeometry line3d = geos_create_linestring(line3d_coords);
+        assertTrue(line3d.hasZ(), "create_linestring 3D has Z");
+
+        # create simple polygon (no holes)
+        auto ring = (
+            {"x": 0.0, "y": 0.0}, {"x": 10.0, "y": 0.0},
+            {"x": 10.0, "y": 10.0}, {"x": 0.0, "y": 10.0}, {"x": 0.0, "y": 0.0},
+        );
+        GEOSGeometry poly = geos_create_polygon(ring);
+        assertEq("Polygon", poly.geometryType(), "create_polygon type");
+        assertFloatEq(100.0, poly.area(), "create_polygon area");
+        assertEq(0, poly.getNumInteriorRings(), "create_polygon no holes");
+
+        # create polygon with hole
+        auto hole = (
+            {"x": 2.0, "y": 2.0}, {"x": 2.0, "y": 4.0},
+            {"x": 4.0, "y": 4.0}, {"x": 4.0, "y": 2.0}, {"x": 2.0, "y": 2.0},
+        );
+        GEOSGeometry poly_hole = geos_create_polygon(ring, (hole,));
+        assertEq("Polygon", poly_hole.geometryType(), "create_polygon_hole type");
+        assertEq(1, poly_hole.getNumInteriorRings(), "create_polygon_hole 1 hole");
+        # area should be exterior - hole = 100 - 4 = 96
+        assertFloatEq(96.0, poly_hole.area(), "create_polygon_hole area");
+
+        # create rectangle
+        GEOSGeometry rect = geos_create_rectangle(0.0, 0.0, 10.0, 20.0);
+        assertEq("Polygon", rect.geometryType(), "create_rectangle type");
+        assertFloatEq(200.0, rect.area(), "create_rectangle area");
+        hash<GEOSExtent> ext = rect.getExtent();
+        assertFloatEq(0.0, ext.xmin, "create_rectangle xmin");
+        assertFloatEq(0.0, ext.ymin, "create_rectangle ymin");
+        assertFloatEq(10.0, ext.xmax, "create_rectangle xmax");
+        assertFloatEq(20.0, ext.ymax, "create_rectangle ymax");
+
+        # create multipoint collection
+        GEOSGeometry mp = geos_create_collection(
+            (geos_create_point(0.0, 0.0), geos_create_point(1.0, 1.0), geos_create_point(2.0, 2.0)),
+            GEOS_MULTIPOINT);
+        assertEq("MultiPoint", mp.geometryType(), "create_collection multipoint type");
+        assertEq(3, mp.numGeometries(), "create_collection multipoint count");
+
+        # create multilinestring
+        GEOSGeometry mls = geos_create_collection(
+            (geos_create_linestring(({"x": 0, "y": 0}, {"x": 1, "y": 1})),
+             geos_create_linestring(({"x": 2, "y": 2}, {"x": 3, "y": 3}))),
+            GEOS_MULTILINESTRING);
+        assertEq("MultiLineString", mls.geometryType(), "create_collection multilinestring type");
+        assertEq(2, mls.numGeometries(), "create_collection multilinestring count");
+
+        # create multipolygon
+        GEOSGeometry mpoly = geos_create_collection(
+            (geos_create_polygon(({"x": 0, "y": 0}, {"x": 1, "y": 0}, {"x": 1, "y": 1}, {"x": 0, "y": 0})),
+             geos_create_polygon(({"x": 5, "y": 5}, {"x": 6, "y": 5}, {"x": 6, "y": 6}, {"x": 5, "y": 5}))),
+            GEOS_MULTIPOLYGON);
+        assertEq("MultiPolygon", mpoly.geometryType(), "create_collection multipolygon type");
+        assertEq(2, mpoly.numGeometries(), "create_collection multipolygon count");
+
+        # create geometry collection
+        GEOSGeometry gc = geos_create_collection(
+            (geos_create_point(0.0, 0.0), geos_create_linestring(({"x": 0, "y": 0}, {"x": 1, "y": 1}))),
+            GEOS_GEOMETRYCOLLECTION);
+        assertEq("GeometryCollection", gc.geometryType(), "create_collection gc type");
+        assertEq(2, gc.numGeometries(), "create_collection gc count");
+
+        # create empty collections
+        GEOSGeometry empty_mp = geos_create_empty_collection(GEOS_MULTIPOINT);
+        assertTrue(empty_mp.isEmpty(), "empty multipoint isEmpty");
+        assertEq("MultiPoint", empty_mp.geometryType(), "empty multipoint type");
+
+        GEOSGeometry empty_gc = geos_create_empty_collection(GEOS_GEOMETRYCOLLECTION);
+        assertTrue(empty_gc.isEmpty(), "empty gc isEmpty");
+        assertEq(0, empty_gc.numGeometries(), "empty gc count");
+
+        # round-trip: create programmatically, serialize to WKT, parse back
+        GEOSGeometry rt_poly = geos_create_polygon(ring);
+        string wkt = rt_poly.toWKT();
+        GEOSGeometry rt_parsed = parse_wkt(wkt);
+        assertTrue(rt_poly.equalsExact(rt_parsed), "round-trip polygon equals");
+
+        # negative: empty coordinate list for linestring
+        assertThrows("GEOS-ERROR", sub() {
+            geos_create_linestring(());
+        }, NOTHING, "empty coords for linestring throws");
+
+        # negative: single point linestring (needs at least 2)
+        assertThrows("GEOS-ERROR", sub() {
+            geos_create_linestring(({"x": 0, "y": 0},));
+        }, NOTHING, "single point linestring throws");
+
+        # negative: unclosed polygon ring (less than 4 points)
+        assertThrows("GEOS-ERROR", sub() {
+            geos_create_polygon(({"x": 0, "y": 0}, {"x": 1, "y": 0}, {"x": 1, "y": 1}));
+        }, NOTHING, "unclosed polygon ring throws");
+    }
+
+    geometryTypeConstantTests() {
+        # verify constants exist and have correct values
+        assertEq(0, GEOS_POINT, "GEOS_POINT constant");
+        assertEq(1, GEOS_LINESTRING, "GEOS_LINESTRING constant");
+        assertEq(2, GEOS_LINEARRING, "GEOS_LINEARRING constant");
+        assertEq(3, GEOS_POLYGON, "GEOS_POLYGON constant");
+        assertEq(4, GEOS_MULTIPOINT, "GEOS_MULTIPOINT constant");
+        assertEq(5, GEOS_MULTILINESTRING, "GEOS_MULTILINESTRING constant");
+        assertEq(6, GEOS_MULTIPOLYGON, "GEOS_MULTIPOLYGON constant");
+        assertEq(7, GEOS_GEOMETRYCOLLECTION, "GEOS_GEOMETRYCOLLECTION constant");
+
+        # verify geometryTypeId() matches constants
+        assertEq(GEOS_POINT, parse_wkt("POINT (0 0)").geometryTypeId(), "point typeId");
+        assertEq(GEOS_LINESTRING, parse_wkt("LINESTRING (0 0, 1 1)").geometryTypeId(), "linestring typeId");
+        assertEq(GEOS_POLYGON, parse_wkt("POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))").geometryTypeId(),
+            "polygon typeId");
+        assertEq(GEOS_MULTIPOINT, parse_wkt("MULTIPOINT ((0 0), (1 1))").geometryTypeId(),
+            "multipoint typeId");
+        assertEq(GEOS_MULTILINESTRING,
+            parse_wkt("MULTILINESTRING ((0 0, 1 1), (2 2, 3 3))").geometryTypeId(),
+            "multilinestring typeId");
+        assertEq(GEOS_MULTIPOLYGON,
+            parse_wkt("MULTIPOLYGON (((0 0, 1 0, 1 1, 0 0)), ((2 2, 3 2, 3 3, 2 2)))").geometryTypeId(),
+            "multipolygon typeId");
+        assertEq(GEOS_GEOMETRYCOLLECTION,
+            parse_wkt("GEOMETRYCOLLECTION (POINT (0 0), LINESTRING (0 0, 1 1))").geometryTypeId(),
+            "geometrycollection typeId");
+    }
+
+    booleanPropertyTests() {
+        # isRing: closed + simple linestring
+        GEOSGeometry ring = parse_wkt("LINESTRING (0 0, 10 0, 10 10, 0 10, 0 0)");
+        assertTrue(ring.isRing(), "closed simple linestring is ring");
+
+        # isRing: open linestring
+        GEOSGeometry open_line = parse_wkt("LINESTRING (0 0, 10 0, 10 10)");
+        assertFalse(open_line.isRing(), "open linestring is not ring");
+
+        # isClosed: closed linestring
+        assertTrue(ring.isClosed(), "closed linestring isClosed");
+
+        # isClosed: open linestring
+        assertFalse(open_line.isClosed(), "open linestring not isClosed");
+
+        # hasZ: 2D geometry
+        GEOSGeometry pt2d = parse_wkt("POINT (1 2)");
+        assertFalse(pt2d.hasZ(), "2D point has no Z");
+
+        # hasZ: 3D geometry
+        GEOSGeometry pt3d = parse_wkt("POINT Z (1 2 3)");
+        assertTrue(pt3d.hasZ(), "3D point has Z");
+
+        # hasZ: 3D linestring
+        GEOSGeometry line3d = parse_wkt("LINESTRING Z (0 0 0, 1 1 1)");
+        assertTrue(line3d.hasZ(), "3D linestring has Z");
+    }
+
+    dimensionBoundsTests() {
+        # getDimensions: point = 0, line = 1, polygon = 2
+        assertEq(0, parse_wkt("POINT (0 0)").getDimensions(), "point dimension 0");
+        assertEq(1, parse_wkt("LINESTRING (0 0, 1 1)").getDimensions(), "line dimension 1");
+        assertEq(2, parse_wkt("POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))").getDimensions(), "polygon dimension 2");
+
+        # test bounds on polygon
+        GEOSGeometry poly = parse_wkt("POLYGON ((2 3, 8 3, 8 7, 2 7, 2 3))");
+        assertFloatEq(2.0, poly.getXMin(), "poly xmin");
+        assertFloatEq(3.0, poly.getYMin(), "poly ymin");
+        assertFloatEq(8.0, poly.getXMax(), "poly xmax");
+        assertFloatEq(7.0, poly.getYMax(), "poly ymax");
+
+        # test bounds on point
+        GEOSGeometry pt = parse_wkt("POINT (5 10)");
+        assertFloatEq(5.0, pt.getXMin(), "point xmin");
+        assertFloatEq(10.0, pt.getYMin(), "point ymin");
+        assertFloatEq(5.0, pt.getXMax(), "point xmax");
+        assertFloatEq(10.0, pt.getYMax(), "point ymax");
+
+        # test bounds on linestring
+        GEOSGeometry line = parse_wkt("LINESTRING (1 2, 5 8, 3 4)");
+        assertFloatEq(1.0, line.getXMin(), "line xmin");
+        assertFloatEq(2.0, line.getYMin(), "line ymin");
+        assertFloatEq(5.0, line.getXMax(), "line xmax");
+        assertFloatEq(8.0, line.getYMax(), "line ymax");
+
+        # test getExtent
+        hash<GEOSExtent> ext = poly.getExtent();
+        assertFloatEq(2.0, ext.xmin, "extent xmin");
+        assertFloatEq(3.0, ext.ymin, "extent ymin");
+        assertFloatEq(8.0, ext.xmax, "extent xmax");
+        assertFloatEq(7.0, ext.ymax, "extent ymax");
+
+        # getExtent on point - min == max
+        hash<GEOSExtent> pt_ext = pt.getExtent();
+        assertFloatEq(5.0, pt_ext.xmin, "point extent xmin");
+        assertFloatEq(5.0, pt_ext.xmax, "point extent xmax");
+        assertFloatEq(10.0, pt_ext.ymin, "point extent ymin");
+        assertFloatEq(10.0, pt_ext.ymax, "point extent ymax");
+    }
+
+    pointCoordinateAccessTests() {
+        # getX/getY on point
+        GEOSGeometry pt = parse_wkt("POINT (3.5 7.2)");
+        assertFloatEq(3.5, pt.getX(), "point getX");
+        assertFloatEq(7.2, pt.getY(), "point getY");
+
+        # getZ on 3D point
+        GEOSGeometry pt3d = parse_wkt("POINT Z (1 2 3)");
+        assertFloatEq(1.0, pt3d.getX(), "3D point getX");
+        assertFloatEq(2.0, pt3d.getY(), "3D point getY");
+        assertFloatEq(3.0, pt3d.getZ(), "3D point getZ");
+
+        # negative: getX on non-point geometry
+        GEOSGeometry line = parse_wkt("LINESTRING (0 0, 1 1)");
+        assertThrows("GEOS-ERROR", sub() {
+            line.getX();
+        }, NOTHING, "getX on linestring throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            line.getY();
+        }, NOTHING, "getY on linestring throws");
+    }
+
+    normalizeEqualsExactTests() {
+        # normalize produces canonical form
+        GEOSGeometry poly1 = parse_wkt("POLYGON ((10 10, 0 10, 0 0, 10 0, 10 10))");
+        GEOSGeometry poly2 = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        # they are topologically equal but may have different WKT
+        assertTrue(poly1.equals(poly2), "pre-normalize: topologically equal");
+
+        poly1.normalize();
+        poly2.normalize();
+        # after normalization, WKT should be identical
+        assertEq(poly1.toWKT(), poly2.toWKT(), "normalized WKT identical");
+
+        # equalsExact: identical geometries
+        GEOSGeometry g1 = parse_wkt("POINT (1.0 2.0)");
+        GEOSGeometry g2 = parse_wkt("POINT (1.0 2.0)");
+        assertTrue(g1.equalsExact(g2), "identical points equalsExact");
+
+        # equalsExact: different geometries
+        GEOSGeometry g3 = parse_wkt("POINT (1.0 3.0)");
+        assertFalse(g1.equalsExact(g3), "different points not equalsExact");
+
+        # equalsExact with tolerance
+        GEOSGeometry g4 = parse_wkt("POINT (1.005 2.005)");
+        assertFalse(g1.equalsExact(g4), "not equal without tolerance");
+        assertTrue(g1.equalsExact(g4, 0.01), "equal within tolerance 0.01");
+        assertFalse(g1.equalsExact(g4, 0.001), "not equal within tolerance 0.001");
+
+        # equalsExact default tolerance is 0.0
+        assertTrue(g1.equalsExact(g2, 0.0), "equalsExact with explicit 0.0 tolerance");
+    }
+
+    polygonDecompositionTests() {
+        # polygon without holes
+        GEOSGeometry simple_poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        assertEq(0, simple_poly.getNumInteriorRings(), "simple polygon has 0 holes");
+
+        GEOSGeometry ext_ring = simple_poly.getExteriorRing();
+        assertEq("LinearRing", ext_ring.geometryType(), "exterior ring is LinearRing");
+        assertEq(5, ext_ring.numPoints(), "exterior ring has 5 points");
+
+        # polygon with 2 holes
+        GEOSGeometry poly_holes = parse_wkt(
+            "POLYGON ((0 0, 20 0, 20 20, 0 20, 0 0), "
+            "(2 2, 2 4, 4 4, 4 2, 2 2), "
+            "(6 6, 6 8, 8 8, 8 6, 6 6))");
+        assertEq(2, poly_holes.getNumInteriorRings(), "polygon has 2 holes");
+
+        # get exterior ring
+        GEOSGeometry outer = poly_holes.getExteriorRing();
+        assertEq("LinearRing", outer.geometryType(), "exterior ring type");
+        assertEq(5, outer.numPoints(), "exterior ring point count");
+
+        # get interior rings
+        GEOSGeometry hole0 = poly_holes.getInteriorRingN(0);
+        assertEq("LinearRing", hole0.geometryType(), "first hole is LinearRing");
+        assertEq(5, hole0.numPoints(), "first hole has 5 points");
+
+        GEOSGeometry hole1 = poly_holes.getInteriorRingN(1);
+        assertEq("LinearRing", hole1.geometryType(), "second hole is LinearRing");
+        assertEq(5, hole1.numPoints(), "second hole has 5 points");
+
+        # negative: getExteriorRing on non-polygon
+        GEOSGeometry pt = parse_wkt("POINT (0 0)");
+        assertThrows("GEOS-ERROR", sub() {
+            pt.getExteriorRing();
+        }, NOTHING, "getExteriorRing on point throws");
+
+        # negative: getNumInteriorRings on non-polygon
+        assertThrows("GEOS-ERROR", sub() {
+            pt.getNumInteriorRings();
+        }, NOTHING, "getNumInteriorRings on point throws");
+
+        # negative: getInteriorRingN out of range
+        assertThrows("GEOS-ERROR", sub() {
+            simple_poly.getInteriorRingN(0);
+        }, NOTHING, "getInteriorRingN on polygon without holes throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            poly_holes.getInteriorRingN(2);
+        }, NOTHING, "getInteriorRingN out of range throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            poly_holes.getInteriorRingN(-1);
+        }, NOTHING, "getInteriorRingN negative index throws");
+    }
+
+    linestringPointAccessTests() {
+        GEOSGeometry line = parse_wkt("LINESTRING (1 2, 3 4, 5 6, 7 8)");
+
+        # getStartPoint
+        GEOSGeometry start = line.getStartPoint();
+        assertEq("Point", start.geometryType(), "startPoint is Point");
+        assertFloatEq(1.0, start.getX(), "startPoint X");
+        assertFloatEq(2.0, start.getY(), "startPoint Y");
+
+        # getEndPoint
+        GEOSGeometry end = line.getEndPoint();
+        assertEq("Point", end.geometryType(), "endPoint is Point");
+        assertFloatEq(7.0, end.getX(), "endPoint X");
+        assertFloatEq(8.0, end.getY(), "endPoint Y");
+
+        # getPointN
+        GEOSGeometry p0 = line.getPointN(0);
+        assertFloatEq(1.0, p0.getX(), "pointN(0) X");
+        assertFloatEq(2.0, p0.getY(), "pointN(0) Y");
+
+        GEOSGeometry p2 = line.getPointN(2);
+        assertFloatEq(5.0, p2.getX(), "pointN(2) X");
+        assertFloatEq(6.0, p2.getY(), "pointN(2) Y");
+
+        GEOSGeometry p3 = line.getPointN(3);
+        assertFloatEq(7.0, p3.getX(), "pointN(3) X");
+        assertFloatEq(8.0, p3.getY(), "pointN(3) Y");
+
+        # negative: getStartPoint on non-linestring
+        GEOSGeometry pt = parse_wkt("POINT (0 0)");
+        assertThrows("GEOS-ERROR", sub() {
+            pt.getStartPoint();
+        }, NOTHING, "getStartPoint on point throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            pt.getEndPoint();
+        }, NOTHING, "getEndPoint on point throws");
+
+        # negative: getPointN out of range
+        assertThrows("GEOS-ERROR", sub() {
+            line.getPointN(4);
+        }, NOTHING, "getPointN out of range throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            line.getPointN(-1);
+        }, NOTHING, "getPointN negative index throws");
+    }
+
     negativeTests() {
         # invalid WKT
         assertThrows("GEOS-ERROR", sub() {
@@ -636,6 +1286,105 @@ public class GeosTest inherits QUnit::Test {
         assertThrows("GEOS-ERROR", sub() {
             new GEOSGeometry(<00>);
         }, NOTHING, "invalid WKB constructor throws");
+
+        # --- Phase 1 negative tests: type-safety and bounds checking ---
+
+        GEOSGeometry line = parse_wkt("LINESTRING (0 0, 1 1, 2 2)");
+        GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+
+        # isClosed on point throws (not a Curve/MultiLineString)
+        assertThrows("GEOS-ERROR", sub() {
+            pt.isClosed();
+        }, NOTHING, "isClosed on point throws");
+
+        # isRing on point returns false (GEOS handles gracefully)
+        assertFalse(pt.isRing(), "isRing on point returns false");
+
+        # getX/getY/getZ on non-point
+        assertThrows("GEOS-ERROR", sub() {
+            line.getX();
+        }, NOTHING, "getX on linestring throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            line.getY();
+        }, NOTHING, "getY on linestring throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            poly.getX();
+        }, NOTHING, "getX on polygon throws");
+
+        # getExteriorRing on non-polygon
+        assertThrows("GEOS-ERROR", sub() {
+            pt.getExteriorRing();
+        }, NOTHING, "getExteriorRing on point throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            line.getExteriorRing();
+        }, NOTHING, "getExteriorRing on linestring throws");
+
+        # getNumInteriorRings on non-polygon
+        assertThrows("GEOS-ERROR", sub() {
+            pt.getNumInteriorRings();
+        }, NOTHING, "getNumInteriorRings on point throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            line.getNumInteriorRings();
+        }, NOTHING, "getNumInteriorRings on linestring throws");
+
+        # getInteriorRingN on non-polygon
+        assertThrows("GEOS-ERROR", sub() {
+            pt.getInteriorRingN(0);
+        }, NOTHING, "getInteriorRingN on point throws");
+
+        # getStartPoint/getEndPoint on non-linestring
+        assertThrows("GEOS-ERROR", sub() {
+            pt.getStartPoint();
+        }, NOTHING, "getStartPoint on point throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            poly.getStartPoint();
+        }, NOTHING, "getStartPoint on polygon throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            pt.getEndPoint();
+        }, NOTHING, "getEndPoint on point throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            poly.getEndPoint();
+        }, NOTHING, "getEndPoint on polygon throws");
+
+        # getPointN on non-linestring
+        assertThrows("GEOS-ERROR", sub() {
+            pt.getPointN(0);
+        }, NOTHING, "getPointN on point throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            poly.getPointN(0);
+        }, NOTHING, "getPointN on polygon throws");
+
+        # getPointN out of range
+        assertThrows("GEOS-ERROR", sub() {
+            line.getPointN(3);
+        }, NOTHING, "getPointN at size throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            line.getPointN(-1);
+        }, NOTHING, "getPointN negative throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            line.getPointN(100);
+        }, NOTHING, "getPointN far out of range throws");
+
+        # getInteriorRingN bounds checking
+        GEOSGeometry poly_holes = parse_wkt(
+            "POLYGON ((0 0, 20 0, 20 20, 0 20, 0 0), (2 2, 2 4, 4 4, 4 2, 2 2))");
+        assertThrows("GEOS-ERROR", sub() {
+            poly_holes.getInteriorRingN(1);
+        }, NOTHING, "getInteriorRingN at size throws");
+
+        assertThrows("GEOS-ERROR", sub() {
+            poly_holes.getInteriorRingN(-1);
+        }, NOTHING, "getInteriorRingN negative throws");
     }
 
     private assertFloatEq(float expected, float actual, string msg) {

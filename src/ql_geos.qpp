@@ -27,6 +27,8 @@
 
 #include "geos-module.h"
 #include "QC_GEOSGeometry.h"
+#include "QC_GEOSGeoJSONReader.h"
+#include "QC_GEOSGeoJSONWriter.h"
 
 #include <cstdlib>
 
@@ -59,6 +61,88 @@ hashdecl GEOSVersionInfo {
     //! Patch version number
     int patch;
 }
+
+//! Geometry extent (bounding box) hash structure
+/** Represents the axis-aligned bounding box of a geometry with minimum and maximum X/Y coordinates.
+
+    @since geos 1.1
+*/
+hashdecl GEOSExtent {
+    //! Minimum X coordinate
+    float xmin;
+    //! Minimum Y coordinate
+    float ymin;
+    //! Maximum X coordinate
+    float xmax;
+    //! Maximum Y coordinate
+    float ymax;
+}
+
+/** @defgroup geos_geometry_type_constants Geometry Type Constants
+    Integer constants identifying geometry types, as returned by
+    @ref Qore::GEOS::GEOSGeometry::geometryTypeId() "GEOSGeometry::geometryTypeId()".
+
+    @since geos 1.1
+*/
+///@{
+namespace Qore::GEOS;
+
+//! Point geometry type (0)
+const GEOS_POINT = GEOS_POINT;
+//! LineString geometry type (1)
+const GEOS_LINESTRING = GEOS_LINESTRING;
+//! LinearRing geometry type (2)
+const GEOS_LINEARRING = GEOS_LINEARRING;
+//! Polygon geometry type (3)
+const GEOS_POLYGON = GEOS_POLYGON;
+//! MultiPoint geometry type (4)
+const GEOS_MULTIPOINT = GEOS_MULTIPOINT;
+//! MultiLineString geometry type (5)
+const GEOS_MULTILINESTRING = GEOS_MULTILINESTRING;
+//! MultiPolygon geometry type (6)
+const GEOS_MULTIPOLYGON = GEOS_MULTIPOLYGON;
+//! GeometryCollection geometry type (7)
+const GEOS_GEOMETRYCOLLECTION = GEOS_GEOMETRYCOLLECTION;
+///@}
+
+/** @defgroup geos_make_valid_constants MakeValid Method Constants
+    Integer constants for geometry repair methods, used with
+    @ref Qore::GEOS::GEOSGeometry::makeValidWithParams() "GEOSGeometry::makeValidWithParams()".
+
+    @since geos 1.1
+*/
+///@{
+namespace Qore::GEOS;
+
+//! Linework method: combines all rings into noded lines and extracts valid polygons (0)
+const GEOS_MAKE_VALID_LINEWORK = GEOS_MAKE_VALID_LINEWORK;
+//! Structure method: makes rings valid then merges shells and subtracts holes (1)
+const GEOS_MAKE_VALID_STRUCTURE = GEOS_MAKE_VALID_STRUCTURE;
+///@}
+
+/** @defgroup geos_buffer_style_constants Buffer Style Constants
+    Constants for controlling buffer cap and join styles, used with
+    @ref Qore::GEOS::GEOSGeometry::bufferWithStyle() "GEOSGeometry::bufferWithStyle()" and
+    @ref Qore::GEOS::GEOSGeometry::offsetCurve() "GEOSGeometry::offsetCurve()".
+
+    @since geos 1.1
+*/
+///@{
+namespace Qore::GEOS;
+
+//! Round end cap style (1)
+const GEOSBUF_CAP_ROUND = GEOSBUF_CAP_ROUND;
+//! Flat end cap style (2)
+const GEOSBUF_CAP_FLAT = GEOSBUF_CAP_FLAT;
+//! Square end cap style (3)
+const GEOSBUF_CAP_SQUARE = GEOSBUF_CAP_SQUARE;
+//! Round join style (1)
+const GEOSBUF_JOIN_ROUND = GEOSBUF_JOIN_ROUND;
+//! Mitre join style (2)
+const GEOSBUF_JOIN_MITRE = GEOSBUF_JOIN_MITRE;
+//! Bevel join style (3)
+const GEOSBUF_JOIN_BEVEL = GEOSBUF_JOIN_BEVEL;
+///@}
 
 /** @defgroup geos_functions GEOS Functions
     Standalone functions for working with GEOS geometries.
@@ -249,5 +333,418 @@ binary make_wkb(GEOSGeometry[QoreGEOSGeometry] geom) {
     rv->append(wkb, size);
     GEOSFree_r(ctx, wkb);
     return rv;
+}
+
+//! Creates a 2D Point geometry from X and Y coordinates
+/** @param x the X coordinate
+    @param y the Y coordinate
+    @return a new GEOSGeometry point
+
+    @par Example:
+    @code{.py}
+GEOSGeometry pt = geos_create_point(1.0, 2.0);
+    @endcode
+
+    @throw GEOS-ERROR error creating point
+
+    @since geos 1.1
+*/
+GEOSGeometry geos_create_point(float x, float y) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* geom = GEOSGeom_createPointFromXY_r(ctx, x, y);
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "geos_create_point")) {
+            xsink->raiseException("GEOS-ERROR", "failed to create point");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(geom));
+}
+
+//! Creates a 3D Point geometry from X, Y, and Z coordinates
+/** @param x the X coordinate
+    @param y the Y coordinate
+    @param z the Z coordinate
+    @return a new GEOSGeometry point with Z coordinate
+
+    @par Example:
+    @code{.py}
+GEOSGeometry pt3d = geos_create_point(1.0, 2.0, 3.0);
+    @endcode
+
+    @throw GEOS-ERROR error creating point
+
+    @since geos 1.1
+*/
+GEOSGeometry geos_create_point(float x, float y, float z) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSCoordSequence* cs = GEOSCoordSeq_create_r(ctx, 1, 3);
+    if (!cs) {
+        xsink->raiseException("GEOS-ERROR", "failed to create coordinate sequence");
+        return QoreValue();
+    }
+    GEOSCoordSeq_setXYZ_r(ctx, cs, 0, x, y, z);
+    GEOSGeometry* geom = GEOSGeom_createPoint_r(ctx, cs);
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "geos_create_point")) {
+            xsink->raiseException("GEOS-ERROR", "failed to create 3D point");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(geom));
+}
+
+//! Creates a LineString geometry from a list of coordinates
+/** @param coords a list of hashes with \c "x", \c "y", and optional \c "z" keys (at least 2 coordinates required)
+    @return a new GEOSGeometry linestring
+
+    @par Example:
+    @code{.py}
+GEOSGeometry line = geos_create_linestring((
+    {"x": 0.0, "y": 0.0},
+    {"x": 10.0, "y": 10.0},
+    {"x": 20.0, "y": 25.0},
+));
+    @endcode
+
+    @throw GEOS-ERROR error creating linestring or fewer than 2 coordinates
+
+    @since geos 1.1
+*/
+GEOSGeometry geos_create_linestring(list coords) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSCoordSequence* cs = qore_list_to_coordseq(ctx, coords, xsink);
+    if (!cs) {
+        return QoreValue();
+    }
+    GEOSGeometry* geom = GEOSGeom_createLineString_r(ctx, cs);
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "geos_create_linestring")) {
+            xsink->raiseException("GEOS-ERROR", "failed to create linestring");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(geom));
+}
+
+//! Creates a Polygon geometry from exterior and optional interior (hole) coordinate rings
+/** @param exterior a list of hashes with \c "x", \c "y", and optional \c "z" keys for the exterior ring
+           (must be closed: first == last)
+    @param holes an optional list of coordinate ring lists for interior holes
+    @return a new GEOSGeometry polygon
+
+    @par Example:
+    @code{.py}
+# simple polygon
+list<hash<GEOSCoordinate>> ring = (
+    {"x": 0, "y": 0}, {"x": 10, "y": 0}, {"x": 10, "y": 10},
+    {"x": 0, "y": 10}, {"x": 0, "y": 0},
+);
+GEOSGeometry poly = geos_create_polygon(ring);
+
+# polygon with a hole
+list<hash<GEOSCoordinate>> hole = (
+    {"x": 2, "y": 2}, {"x": 2, "y": 4}, {"x": 4, "y": 4},
+    {"x": 4, "y": 2}, {"x": 2, "y": 2},
+);
+GEOSGeometry poly_with_hole = geos_create_polygon(ring, (hole,));
+    @endcode
+
+    @throw GEOS-ERROR error creating polygon or invalid ring
+
+    @since geos 1.1
+*/
+GEOSGeometry geos_create_polygon(list exterior, *list holes) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+
+    // create exterior ring
+    GEOSCoordSequence* ext_cs = qore_list_to_coordseq(ctx, exterior, xsink);
+    if (!ext_cs) {
+        return QoreValue();
+    }
+    GEOSGeometry* shell = GEOSGeom_createLinearRing_r(ctx, ext_cs);
+    if (!shell) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "geos_create_polygon")) {
+            xsink->raiseException("GEOS-ERROR", "failed to create exterior ring");
+        }
+        return QoreValue();
+    }
+
+    // create interior rings (holes)
+    size_t nholes = 0;
+    GEOSGeometry** hole_geoms = nullptr;
+    if (holes && holes->size() > 0) {
+        nholes = holes->size();
+        hole_geoms = new GEOSGeometry*[nholes];
+        for (size_t i = 0; i < nholes; ++i) {
+            const QoreListNode* hole_coords = holes->retrieveEntry(i).get<const QoreListNode>();
+            if (!hole_coords) {
+                // cleanup
+                for (size_t j = 0; j < i; ++j) {
+                    GEOSGeom_destroy_r(ctx, hole_geoms[j]);
+                }
+                delete[] hole_geoms;
+                GEOSGeom_destroy_r(ctx, shell);
+                xsink->raiseException("GEOS-ERROR", "hole %zu is not a coordinate list", i);
+                return QoreValue();
+            }
+            GEOSCoordSequence* hole_cs = qore_list_to_coordseq(ctx, hole_coords, xsink);
+            if (!hole_cs) {
+                for (size_t j = 0; j < i; ++j) {
+                    GEOSGeom_destroy_r(ctx, hole_geoms[j]);
+                }
+                delete[] hole_geoms;
+                GEOSGeom_destroy_r(ctx, shell);
+                return QoreValue();
+            }
+            hole_geoms[i] = GEOSGeom_createLinearRing_r(ctx, hole_cs);
+            if (!hole_geoms[i]) {
+                for (size_t j = 0; j < i; ++j) {
+                    GEOSGeom_destroy_r(ctx, hole_geoms[j]);
+                }
+                delete[] hole_geoms;
+                GEOSGeom_destroy_r(ctx, shell);
+                if (!check_geos_error(xsink, "GEOS-ERROR", "geos_create_polygon")) {
+                    xsink->raiseException("GEOS-ERROR", "failed to create interior ring %zu", i);
+                }
+                return QoreValue();
+            }
+        }
+    }
+
+    GEOSGeometry* geom = GEOSGeom_createPolygon_r(ctx, shell, hole_geoms, nholes);
+    delete[] hole_geoms;
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "geos_create_polygon")) {
+            xsink->raiseException("GEOS-ERROR", "failed to create polygon");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(geom));
+}
+
+//! Creates a geometry collection from a list of geometries
+/** @param geoms a list of GEOSGeometry objects
+    @param type the collection type ID (e.g., @ref GEOS_MULTIPOINT, @ref GEOS_MULTILINESTRING,
+           @ref GEOS_MULTIPOLYGON, @ref GEOS_GEOMETRYCOLLECTION)
+    @return a new GEOSGeometry collection
+
+    @par Example:
+    @code{.py}
+GEOSGeometry mp = geos_create_collection(
+    (parse_wkt("POINT (0 0)"), parse_wkt("POINT (1 1)")),
+    GEOS_MULTIPOINT);
+    @endcode
+
+    @throw GEOS-ERROR error creating collection or invalid type
+
+    @since geos 1.1
+*/
+GEOSGeometry geos_create_collection(list geoms, int type) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+
+    size_t ngeoms = geoms->size();
+    // clone each geometry since GEOSGeom_createCollection_r takes ownership
+    GEOSGeometry** geos_geoms = new GEOSGeometry*[ngeoms];
+    for (size_t i = 0; i < ngeoms; ++i) {
+        if (!(i % 100) && qore_check_cancel(xsink)) {
+            for (size_t j = 0; j < i; ++j) {
+                GEOSGeom_destroy_r(ctx, geos_geoms[j]);
+            }
+            delete[] geos_geoms;
+            return QoreValue();
+        }
+        QoreObject* obj = geoms->retrieveEntry(i).get<QoreObject>();
+        QoreGEOSGeometry* qg = static_cast<QoreGEOSGeometry*>(
+            obj->getReferencedPrivateData(CID_GEOSGEOMETRY, xsink));
+        if (!qg) {
+            for (size_t j = 0; j < i; ++j) {
+                GEOSGeom_destroy_r(ctx, geos_geoms[j]);
+            }
+            delete[] geos_geoms;
+            if (!*xsink) {
+                xsink->raiseException("GEOS-ERROR", "element %zu is not a GEOSGeometry", i);
+            }
+            return QoreValue();
+        }
+        geos_geoms[i] = GEOSGeom_clone_r(ctx, qg->getGeometry());
+        qg->deref(xsink);
+        if (!geos_geoms[i]) {
+            for (size_t j = 0; j < i; ++j) {
+                GEOSGeom_destroy_r(ctx, geos_geoms[j]);
+            }
+            delete[] geos_geoms;
+            xsink->raiseException("GEOS-ERROR", "failed to clone geometry %zu", i);
+            return QoreValue();
+        }
+    }
+
+    GEOSGeometry* geom = GEOSGeom_createCollection_r(ctx, type, geos_geoms, ngeoms);
+    delete[] geos_geoms;
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "geos_create_collection")) {
+            xsink->raiseException("GEOS-ERROR", "failed to create collection");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(geom));
+}
+
+//! Creates an empty geometry collection of the given type
+/** @param type the collection type ID (e.g., @ref GEOS_MULTIPOINT, @ref GEOS_GEOMETRYCOLLECTION)
+    @return a new empty GEOSGeometry collection
+
+    @par Example:
+    @code{.py}
+GEOSGeometry empty = geos_create_empty_collection(GEOS_MULTIPOINT);
+assertTrue(empty.isEmpty());
+    @endcode
+
+    @throw GEOS-ERROR error creating empty collection
+
+    @since geos 1.1
+*/
+GEOSGeometry geos_create_empty_collection(int type) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* geom = GEOSGeom_createEmptyCollection_r(ctx, type);
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "geos_create_empty_collection")) {
+            xsink->raiseException("GEOS-ERROR", "failed to create empty collection");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(geom));
+}
+
+//! Tests whether a DE-9IM intersection matrix matches a pattern
+/** @param matrix the 9-character DE-9IM intersection matrix string
+    @param pattern the pattern to match against (may contain wildcards: T, F, *, 0-9)
+    @return @ref True if the matrix matches the pattern
+
+    @par Example:
+    @code{.py}
+string matrix = geom1.relate(geom2);
+bool is_within = geos_relate_pattern_match(matrix, "T*F**F***");
+    @endcode
+
+    @throw GEOS-ERROR error matching pattern
+
+    @since geos 1.1
+*/
+bool geos_relate_pattern_match(string matrix, string pattern) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSRelatePatternMatch_r(ctx, matrix->c_str(), pattern->c_str());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "geos_relate_pattern_match")) {
+            xsink->raiseException("GEOS-ERROR", "error matching DE-9IM pattern");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Convenience function to parse a GeoJSON string into a GEOSGeometry
+/** @param geojson the GeoJSON string
+    @return a new GEOSGeometry object
+
+    @par Example:
+    @code{.py}
+GEOSGeometry geom = parse_geojson('{"type": "Point", "coordinates": [1.0, 2.0]}');
+    @endcode
+
+    @throw GEOS-ERROR error parsing GeoJSON string
+
+    @since geos 1.1
+*/
+GEOSGeometry parse_geojson(string geojson) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeoJSONReader* reader = GEOSGeoJSONReader_create_r(ctx);
+    if (!reader) {
+        xsink->raiseException("GEOS-ERROR", "failed to create GeoJSON reader");
+        return QoreValue();
+    }
+    GEOSGeometry* geom = GEOSGeoJSONReader_readGeometry_r(ctx, reader, geojson->c_str());
+    GEOSGeoJSONReader_destroy_r(ctx, reader);
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "parse_geojson")) {
+            xsink->raiseException("GEOS-ERROR", "failed to parse GeoJSON string");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(geom));
+}
+
+//! Convenience function to serialize a GEOSGeometry to a GeoJSON string
+/** @param geom the geometry to serialize
+    @param indent the number of spaces for indentation (-1 for compact output, default)
+    @return the GeoJSON string
+
+    @par Example:
+    @code{.py}
+string json = make_geojson(geom);
+string pretty = make_geojson(geom, 2);
+    @endcode
+
+    @throw GEOS-ERROR error writing GeoJSON
+
+    @since geos 1.1
+*/
+string make_geojson(GEOSGeometry[QoreGEOSGeometry] geom, int indent = -1) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeoJSONWriter* writer = GEOSGeoJSONWriter_create_r(ctx);
+    if (!writer) {
+        xsink->raiseException("GEOS-ERROR", "failed to create GeoJSON writer");
+        return QoreValue();
+    }
+    char* json = GEOSGeoJSONWriter_writeGeometry_r(ctx, writer, geom->getGeometry(), indent);
+    GEOSGeoJSONWriter_destroy_r(ctx, writer);
+    if (!json) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "make_geojson")) {
+            xsink->raiseException("GEOS-ERROR", "error writing GeoJSON");
+        }
+        return QoreValue();
+    }
+    QoreStringNode* rv = new QoreStringNode(json);
+    GEOSFree_r(ctx, json);
+    return rv;
+}
+
+//! Creates a rectangle polygon from bounding box coordinates
+/** @param xmin the minimum X coordinate
+    @param ymin the minimum Y coordinate
+    @param xmax the maximum X coordinate
+    @param ymax the maximum Y coordinate
+    @return a new GEOSGeometry rectangle polygon
+
+    @par Example:
+    @code{.py}
+GEOSGeometry rect = geos_create_rectangle(0, 0, 10, 20);
+assertEq(200.0, rect.area());
+    @endcode
+
+    @throw GEOS-ERROR error creating rectangle
+
+    @since geos 1.1
+*/
+GEOSGeometry geos_create_rectangle(float xmin, float ymin, float xmax, float ymax) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* geom = GEOSGeom_createRectangle_r(ctx, xmin, ymin, xmax, ymax);
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "geos_create_rectangle")) {
+            xsink->raiseException("GEOS-ERROR", "failed to create rectangle");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(geom));
 }
 ///@}

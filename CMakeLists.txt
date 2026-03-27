@@ -27,6 +27,8 @@ set(QPP_SRC
     src/QC_GEOSWKTWriter.qpp
     src/QC_GEOSWKBReader.qpp
     src/QC_GEOSWKBWriter.qpp
+    src/QC_GEOSGeoJSONReader.qpp
+    src/QC_GEOSGeoJSONWriter.qpp
 )
 
 set(CPP_SRC

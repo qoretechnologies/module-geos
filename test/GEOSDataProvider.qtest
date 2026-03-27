@@ -26,6 +26,11 @@ public class GEOSDataProviderTest inherits QUnit::Test {
         addTestCase("WKB writer accepts binary input", \wkbWriterBinaryInputTests());
         addTestCase("negative tests", \negativeTests());
         addTestCase("multiple geometry types", \multipleGeometryTypeTests());
+        addTestCase("GeoJSON factory discovery", \geojsonFactoryTests());
+        addTestCase("GeoJSON read from string", \geojsonReadStringTests());
+        addTestCase("GeoJSON write + read-back", \geojsonWriteReadRoundTripTests());
+        addTestCase("GeoJSON write accepts WKT", \geojsonWriteWktInputTests());
+        addTestCase("GeoJSON negative tests", \geojsonNegativeTests());
 
         set_return_value(main());
     }
@@ -476,6 +481,82 @@ public class GEOSDataProviderTest inherits QUnit::Test {
             idx++;
         }
         assertEq(test_geoms.size(), idx);
+    }
+
+    geojsonFactoryTests() {
+        # Verify GeoJSON factories are discoverable
+        auto f = DataProvider::getFactory("geosgeojsonread");
+        assertEq("geosgeojsonread", f.getInfo().name, "geojson read factory");
+
+        f = DataProvider::getFactory("geosgeojsonwrite");
+        assertEq("geosgeojsonwrite", f.getInfo().name, "geojson write factory");
+    }
+
+    geojsonReadStringTests() {
+        string data = '{"type":"Point","coordinates":[1,2]}' + "\n"
+            + '{"type":"LineString","coordinates":[[0,0],[10,10]]}' + "\n"
+            + '{"type":"Polygon","coordinates":[[[0,0],[10,0],[10,10],[0,10],[0,0]]]}';
+
+        GEOSGeoJsonReadDataProvider provider({"data": data});
+        list<auto> records = map $1, provider.searchRecords();
+
+        assertEq(3, records.size(), "geojson read 3 records");
+        assertEq("Point", records[0].type, "geojson read record 0 type");
+        assertEq(1, records[0].line_number, "geojson read record 0 line");
+        assertEq("LineString", records[1].type, "geojson read record 1 type");
+        assertEq("Polygon", records[2].type, "geojson read record 2 type");
+    }
+
+    geojsonWriteReadRoundTripTests() {
+        # Write GeoJSON to a stream
+        StringOutputStream sos();
+        GEOSGeoJsonWriteDataProvider writer({"stream": sos});
+        writer.createRecord({"geometry": '{"type":"Point","coordinates":[1,2]}'});
+        writer.createRecord({"geometry": '{"type":"Point","coordinates":[3,4]}'});
+        string output = sos.getData();
+
+        # Read back
+        GEOSGeoJsonReadDataProvider reader({"data": output});
+        list<auto> records = map $1, reader.searchRecords();
+        assertEq(2, records.size(), "geojson roundtrip 2 records");
+        assertEq("Point", records[0].type, "geojson roundtrip type 0");
+        assertEq("Point", records[1].type, "geojson roundtrip type 1");
+    }
+
+    geojsonWriteWktInputTests() {
+        # Write WKT input to GeoJSON output (auto-conversion)
+        StringOutputStream sos();
+        GEOSGeoJsonWriteDataProvider writer({"stream": sos});
+        writer.createRecord({"geometry": "POINT (5 10)"});
+        string output = sos.getData();
+
+        # Verify it's valid GeoJSON
+        assertRegex("Point", output, "WKT->GeoJSON contains Point");
+        assertRegex("coordinates", output, "WKT->GeoJSON contains coordinates");
+
+        # Read back and verify
+        GEOSGeoJsonReadDataProvider reader({"data": output});
+        list<auto> records = map $1, reader.searchRecords();
+        assertEq(1, records.size(), "WKT->GeoJSON roundtrip 1 record");
+        assertEq("Point", records[0].type, "WKT->GeoJSON roundtrip type");
+    }
+
+    geojsonNegativeTests() {
+        # Missing input source
+        assertThrows("GEOS-GEOJSON-ERROR", sub() {
+            new GEOSGeoJsonReadDataProvider();
+        }, NOTHING, "geojson read no input throws");
+
+        # Missing output target
+        assertThrows("GEOS-GEOJSON-ERROR", sub() {
+            new GEOSGeoJsonWriteDataProvider();
+        }, NOTHING, "geojson write no output throws");
+
+        # Invalid GeoJSON in read
+        GEOSGeoJsonReadDataProvider provider({"data": "not valid json"});
+        assertThrows("GEOS-GEOJSON-ERROR", sub() {
+            map $1, provider.searchRecords();
+        }, NOTHING, "geojson read invalid data throws");
     }
 
     #! Helper: encode a big-endian uint32 as binary

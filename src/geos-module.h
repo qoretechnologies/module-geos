@@ -57,6 +57,7 @@ DLLLOCAL bool check_geos_error(ExceptionSink* xsink, const char* err_code, const
 // hashdecl pointers
 DLLLOCAL extern const TypedHashDecl* hashdeclGEOSCoordinate;
 DLLLOCAL extern const TypedHashDecl* hashdeclGEOSVersionInfo;
+DLLLOCAL extern const TypedHashDecl* hashdeclGEOSExtent;
 
 // class pointers
 DLLLOCAL extern QoreClass* QC_GEOSGEOMETRY;
@@ -66,6 +67,8 @@ DLLLOCAL extern QoreClass* QC_GEOSWKTREADER;
 DLLLOCAL extern QoreClass* QC_GEOSWKTWRITER;
 DLLLOCAL extern QoreClass* QC_GEOSWKBREADER;
 DLLLOCAL extern QoreClass* QC_GEOSWKBWRITER;
+DLLLOCAL extern QoreClass* QC_GEOSGEOJSONREADER;
+DLLLOCAL extern QoreClass* QC_GEOSGEOJSONWRITER;
 
 // class IDs
 DLLLOCAL extern qore_classid_t CID_GEOSGEOMETRY;
@@ -75,11 +78,20 @@ DLLLOCAL extern qore_classid_t CID_GEOSWKTREADER;
 DLLLOCAL extern qore_classid_t CID_GEOSWKTWRITER;
 DLLLOCAL extern qore_classid_t CID_GEOSWKBREADER;
 DLLLOCAL extern qore_classid_t CID_GEOSWKBWRITER;
+DLLLOCAL extern qore_classid_t CID_GEOSGEOJSONREADER;
+DLLLOCAL extern qore_classid_t CID_GEOSGEOJSONWRITER;
+
+// Helper: convert a Qore list<hash<GEOSCoordinate>> to a GEOSCoordSequence*
+// Returns nullptr and raises a Qore exception on error. Caller owns the returned sequence.
+DLLLOCAL GEOSCoordSequence* qore_list_to_coordseq(GEOSContextHandle_t ctx, const QoreListNode* l,
+    ExceptionSink* xsink);
 
 // QPP-generated init functions
 DLLLOCAL void init_geos_functions(QoreNamespace& ns);
+DLLLOCAL void init_geos_constants(QoreNamespace& ns);
 DLLLOCAL TypedHashDecl* init_hashdecl_GEOSCoordinate(QoreNamespace& ns);
 DLLLOCAL TypedHashDecl* init_hashdecl_GEOSVersionInfo(QoreNamespace& ns);
+DLLLOCAL TypedHashDecl* init_hashdecl_GEOSExtent(QoreNamespace& ns);
 DLLLOCAL QoreClass* initGEOSGeometryClass(QoreNamespace& ns);
 DLLLOCAL QoreClass* initGEOSPreparedGeometryClass(QoreNamespace& ns);
 DLLLOCAL QoreClass* initGEOSSTRtreeClass(QoreNamespace& ns);
@@ -87,5 +99,7 @@ DLLLOCAL QoreClass* initGEOSWKTReaderClass(QoreNamespace& ns);
 DLLLOCAL QoreClass* initGEOSWKTWriterClass(QoreNamespace& ns);
 DLLLOCAL QoreClass* initGEOSWKBReaderClass(QoreNamespace& ns);
 DLLLOCAL QoreClass* initGEOSWKBWriterClass(QoreNamespace& ns);
+DLLLOCAL QoreClass* initGEOSGeoJSONReaderClass(QoreNamespace& ns);
+DLLLOCAL QoreClass* initGEOSGeoJSONWriterClass(QoreNamespace& ns);
 
 #endif

@@ -1,0 +1,69 @@
+/* -*- mode: c++; indent-tabs-mode: nil -*- */
+/*
+    QC_GEOSGeoJSONReader.qpp
+
+    Qore Programming Language
+
+    Copyright (C) 2026 Qore Technologies, s.r.o.
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+
+#include "QC_GEOSGeoJSONReader.h"
+#include "QC_GEOSGeometry.h"
+
+//! GeoJSON reader for parsing GeoJSON geometry strings
+/** A single geometry or \c Feature is parsed as a geometry.
+    A \c FeatureCollection is parsed as a \c GeometryCollection.
+
+    @par Example:
+    @code{.py}
+GEOSGeoJSONReader reader();
+GEOSGeometry geom = reader.read('{"type": "Point", "coordinates": [1.0, 2.0]}');
+    @endcode
+
+    @since geos 1.1
+*/
+qclass GEOSGeoJSONReader [arg=QoreGEOSGeoJSONReader* r; ns=Qore::GEOS];
+
+//! Creates a new GeoJSON reader
+/**
+*/
+GEOSGeoJSONReader::constructor() {
+    self->setPrivate(CID_GEOSGEOJSONREADER, new QoreGEOSGeoJSONReader());
+}
+
+//! Reads a GeoJSON string and returns a GEOSGeometry object
+/** @param geojson the GeoJSON string to parse
+    @return a new GEOSGeometry object
+
+    @throw GEOS-ERROR error parsing GeoJSON string
+*/
+GEOSGeometry GEOSGeoJSONReader::read(string geojson) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* geom = GEOSGeoJSONReader_readGeometry_r(ctx, r->getReader(), geojson->c_str());
+    if (!geom) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "GeoJSONReader::read")) {
+            xsink->raiseException("GEOS-ERROR", "failed to parse GeoJSON string");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(geom));
+}

@@ -27,6 +27,7 @@
 
 #include "QC_GEOSGeometry.h"
 #include "QC_GEOSPreparedGeometry.h"
+#include "QC_GEOSGeoJSONWriter.h"
 
 //! Core geometry class wrapping the GEOS GEOSGeometry type
 /** This class provides the main interface for working with geometries in GEOS.
@@ -931,4 +932,942 @@ auto GEOSGeometry::prepare() {
     self->ref();
     return new QoreObject(QC_GEOSPREPAREDGEOMETRY, getProgram(),
         new QoreGEOSPreparedGeometry(pg, self));
+}
+
+//! Tests whether this geometry is a ring (closed and simple)
+/** @return @ref True if the geometry is a ring
+
+    @par Example:
+    @code{.py}
+GEOSGeometry ring = new GEOSGeometry("LINESTRING (0 0, 10 0, 10 10, 0 10, 0 0)");
+printf("is ring: %y\n", ring.isRing()); # True
+    @endcode
+
+    @throw GEOS-ERROR error testing ring property
+
+    @since geos 1.1
+*/
+bool GEOSGeometry::isRing() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSisRing_r(ctx, g->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "isRing")) {
+            xsink->raiseException("GEOS-ERROR", "error testing ring property");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether this geometry is closed
+/** A geometry is closed if its start point equals its end point.
+    Points and polygons are always closed.
+
+    @return @ref True if the geometry is closed
+
+    @par Example:
+    @code{.py}
+GEOSGeometry line = new GEOSGeometry("LINESTRING (0 0, 10 0, 10 10, 0 10, 0 0)");
+printf("is closed: %y\n", line.isClosed()); # True
+    @endcode
+
+    @throw GEOS-ERROR error testing closed property
+
+    @since geos 1.1
+*/
+bool GEOSGeometry::isClosed() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSisClosed_r(ctx, g->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "isClosed")) {
+            xsink->raiseException("GEOS-ERROR", "error testing closed property");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Tests whether this geometry has Z coordinates
+/** @return @ref True if the geometry has Z (3D) coordinates
+
+    @par Example:
+    @code{.py}
+GEOSGeometry pt3d = new GEOSGeometry("POINT Z (1 2 3)");
+printf("has Z: %y\n", pt3d.hasZ()); # True
+    @endcode
+
+    @throw GEOS-ERROR error testing Z coordinate presence
+
+    @since geos 1.1
+*/
+bool GEOSGeometry::hasZ() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSHasZ_r(ctx, g->getGeometry());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "hasZ")) {
+            xsink->raiseException("GEOS-ERROR", "error testing Z coordinate presence");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Returns the geometry type as an integer constant
+/** @return the geometry type ID; one of the @ref geos_geometry_type_constants
+
+    @par Example:
+    @code{.py}
+GEOSGeometry pt = new GEOSGeometry("POINT (1 2)");
+printf("type id: %d\n", pt.geometryTypeId()); # 0 (GEOS_POINT)
+    @endcode
+
+    @see @ref geos_geometry_type_constants
+
+    @since geos 1.1
+*/
+int GEOSGeometry::geometryTypeId() [flags=RET_VALUE_ONLY] {
+    GEOSContextHandle_t ctx = geos_get_context();
+    return GEOSGeomTypeId_r(ctx, g->getGeometry());
+}
+
+//! Returns the topological dimension of this geometry
+/** Returns 0 for points, 1 for lines, 2 for polygons.
+
+    @return the topological dimension (0, 1, or 2)
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = new GEOSGeometry("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+printf("dimensions: %d\n", poly.getDimensions()); # 2
+    @endcode
+
+    @since geos 1.1
+*/
+int GEOSGeometry::getDimensions() [flags=RET_VALUE_ONLY] {
+    GEOSContextHandle_t ctx = geos_get_context();
+    return GEOSGeom_getDimensions_r(ctx, g->getGeometry());
+}
+
+//! Returns the minimum X coordinate of this geometry's bounding box
+/** @return the minimum X value
+
+    @throw GEOS-ERROR error getting coordinate bound
+
+    @since geos 1.1
+*/
+float GEOSGeometry::getXMin() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double val;
+    if (!GEOSGeom_getXMin_r(ctx, g->getGeometry(), &val)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getXMin")) {
+            xsink->raiseException("GEOS-ERROR", "error getting minimum X coordinate");
+        }
+        return QoreValue();
+    }
+    return val;
+}
+
+//! Returns the minimum Y coordinate of this geometry's bounding box
+/** @return the minimum Y value
+
+    @throw GEOS-ERROR error getting coordinate bound
+
+    @since geos 1.1
+*/
+float GEOSGeometry::getYMin() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double val;
+    if (!GEOSGeom_getYMin_r(ctx, g->getGeometry(), &val)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getYMin")) {
+            xsink->raiseException("GEOS-ERROR", "error getting minimum Y coordinate");
+        }
+        return QoreValue();
+    }
+    return val;
+}
+
+//! Returns the maximum X coordinate of this geometry's bounding box
+/** @return the maximum X value
+
+    @throw GEOS-ERROR error getting coordinate bound
+
+    @since geos 1.1
+*/
+float GEOSGeometry::getXMax() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double val;
+    if (!GEOSGeom_getXMax_r(ctx, g->getGeometry(), &val)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getXMax")) {
+            xsink->raiseException("GEOS-ERROR", "error getting maximum X coordinate");
+        }
+        return QoreValue();
+    }
+    return val;
+}
+
+//! Returns the maximum Y coordinate of this geometry's bounding box
+/** @return the maximum Y value
+
+    @throw GEOS-ERROR error getting coordinate bound
+
+    @since geos 1.1
+*/
+float GEOSGeometry::getYMax() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double val;
+    if (!GEOSGeom_getYMax_r(ctx, g->getGeometry(), &val)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getYMax")) {
+            xsink->raiseException("GEOS-ERROR", "error getting maximum Y coordinate");
+        }
+        return QoreValue();
+    }
+    return val;
+}
+
+//! Returns the full extent (bounding box) of this geometry
+/** @return a @ref GEOSExtent hash with xmin, ymin, xmax, ymax
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = new GEOSGeometry("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+hash<GEOSExtent> ext = poly.getExtent();
+printf("bounds: %f,%f to %f,%f\n", ext.xmin, ext.ymin, ext.xmax, ext.ymax);
+    @endcode
+
+    @throw GEOS-ERROR error getting geometry extent
+
+    @since geos 1.1
+*/
+hash<GEOSExtent> GEOSGeometry::getExtent() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double xmin, ymin, xmax, ymax;
+    if (!GEOSGeom_getExtent_r(ctx, g->getGeometry(), &xmin, &ymin, &xmax, &ymax)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getExtent")) {
+            xsink->raiseException("GEOS-ERROR", "error getting geometry extent");
+        }
+        return QoreValue();
+    }
+    ReferenceHolder<QoreHashNode> h(new QoreHashNode(hashdeclGEOSExtent, xsink), xsink);
+    h->setKeyValue("xmin", xmin, xsink);
+    h->setKeyValue("ymin", ymin, xsink);
+    h->setKeyValue("xmax", xmax, xsink);
+    h->setKeyValue("ymax", ymax, xsink);
+    return h.release();
+}
+
+//! Returns the X coordinate of a point geometry
+/** This method only works on Point geometries.
+
+    @return the X coordinate value
+
+    @throw GEOS-ERROR error getting X coordinate or geometry is not a point
+
+    @since geos 1.1
+*/
+float GEOSGeometry::getX() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double val;
+    if (!GEOSGeomGetX_r(ctx, g->getGeometry(), &val)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getX")) {
+            xsink->raiseException("GEOS-ERROR", "error getting X coordinate; geometry must be a Point");
+        }
+        return QoreValue();
+    }
+    return val;
+}
+
+//! Returns the Y coordinate of a point geometry
+/** This method only works on Point geometries.
+
+    @return the Y coordinate value
+
+    @throw GEOS-ERROR error getting Y coordinate or geometry is not a point
+
+    @since geos 1.1
+*/
+float GEOSGeometry::getY() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double val;
+    if (!GEOSGeomGetY_r(ctx, g->getGeometry(), &val)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getY")) {
+            xsink->raiseException("GEOS-ERROR", "error getting Y coordinate; geometry must be a Point");
+        }
+        return QoreValue();
+    }
+    return val;
+}
+
+//! Returns the Z coordinate of a point geometry
+/** This method only works on Point geometries with Z coordinates.
+
+    @return the Z coordinate value
+
+    @throw GEOS-ERROR error getting Z coordinate or geometry is not a point
+
+    @since geos 1.1
+*/
+float GEOSGeometry::getZ() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    double val;
+    if (!GEOSGeomGetZ_r(ctx, g->getGeometry(), &val)) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getZ")) {
+            xsink->raiseException("GEOS-ERROR", "error getting Z coordinate; geometry must be a Point");
+        }
+        return QoreValue();
+    }
+    return val;
+}
+
+//! Normalizes this geometry to a canonical form
+/** Modifies this geometry in place so that geometries with the same topology
+    will have the same WKT representation.
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = new GEOSGeometry("POLYGON ((10 10, 0 10, 0 0, 10 0, 10 10))");
+poly.normalize();
+# coordinates are now in canonical order
+    @endcode
+
+    @throw GEOS-ERROR error normalizing geometry
+
+    @since geos 1.1
+*/
+nothing GEOSGeometry::normalize() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    if (GEOSNormalize_r(ctx, g->getGeometry()) == -1) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "normalize")) {
+            xsink->raiseException("GEOS-ERROR", "error normalizing geometry");
+        }
+    }
+}
+
+//! Tests whether this geometry is structurally equal to the other within a given tolerance
+/** Unlike @ref equals(), this method compares coordinate values directly rather than
+    testing topological equality.
+
+    @param other the geometry to compare with
+    @param tolerance the maximum allowed difference between coordinate values (default 0.0)
+    @return @ref True if the geometries are equal within the given tolerance
+
+    @par Example:
+    @code{.py}
+GEOSGeometry g1 = new GEOSGeometry("POINT (1.0 2.0)");
+GEOSGeometry g2 = new GEOSGeometry("POINT (1.001 2.001)");
+printf("exact equal: %y\n", g1.equalsExact(g2, 0.01)); # True
+    @endcode
+
+    @throw GEOS-ERROR error comparing geometries
+
+    @since geos 1.1
+*/
+bool GEOSGeometry::equalsExact(GEOSGeometry[QoreGEOSGeometry] other, float tolerance = 0.0) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSEqualsExact_r(ctx, g->getGeometry(), other->getGeometry(), tolerance);
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "equalsExact")) {
+            xsink->raiseException("GEOS-ERROR", "error in equalsExact comparison");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Returns the exterior ring of a polygon geometry
+/** The returned geometry is a clone (not a borrowed reference).
+    This method only works on Polygon geometries.
+
+    @return a new GEOSGeometry representing the exterior ring (LinearRing)
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = new GEOSGeometry("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+GEOSGeometry ring = poly.getExteriorRing();
+printf("ring: %s\n", ring.toWKT());
+    @endcode
+
+    @throw GEOS-ERROR error getting exterior ring or geometry is not a polygon
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::getExteriorRing() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    const GEOSGeometry* ring = GEOSGetExteriorRing_r(ctx, g->getGeometry());
+    if (!ring) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getExteriorRing")) {
+            xsink->raiseException("GEOS-ERROR", "error getting exterior ring; geometry must be a Polygon");
+        }
+        return QoreValue();
+    }
+    // clone the borrowed pointer since GEOS owns it
+    GEOSGeometry* clone = GEOSGeom_clone_r(ctx, ring);
+    if (!clone) {
+        xsink->raiseException("GEOS-ERROR", "error cloning exterior ring");
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(clone));
+}
+
+//! Returns the Nth interior ring (hole) of a polygon geometry
+/** The returned geometry is a clone (not a borrowed reference).
+    This method only works on Polygon geometries.
+
+    @param n the zero-based index of the interior ring
+    @return a new GEOSGeometry representing the interior ring (LinearRing)
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = new GEOSGeometry(
+    "POLYGON ((0 0, 20 0, 20 20, 0 20, 0 0), (5 5, 5 10, 10 10, 10 5, 5 5))");
+GEOSGeometry hole = poly.getInteriorRingN(0);
+printf("hole: %s\n", hole.toWKT());
+    @endcode
+
+    @throw GEOS-ERROR index out of range, error getting interior ring, or geometry is not a polygon
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::getInteriorRingN(int n) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    int num = GEOSGetNumInteriorRings_r(ctx, g->getGeometry());
+    if (num == -1) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getInteriorRingN")) {
+            xsink->raiseException("GEOS-ERROR", "error getting interior ring count; geometry must be a Polygon");
+        }
+        return QoreValue();
+    }
+    if (n < 0 || n >= num) {
+        xsink->raiseException("GEOS-ERROR", "interior ring index %d out of range (0..%d)", (int)n, num - 1);
+        return QoreValue();
+    }
+    const GEOSGeometry* ring = GEOSGetInteriorRingN_r(ctx, g->getGeometry(), n);
+    if (!ring) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getInteriorRingN")) {
+            xsink->raiseException("GEOS-ERROR", "error getting interior ring at index %d", (int)n);
+        }
+        return QoreValue();
+    }
+    // clone the borrowed pointer since GEOS owns it
+    GEOSGeometry* clone = GEOSGeom_clone_r(ctx, ring);
+    if (!clone) {
+        xsink->raiseException("GEOS-ERROR", "error cloning interior ring");
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(clone));
+}
+
+//! Returns the number of interior rings (holes) in a polygon geometry
+/** @return the number of interior rings, or -1 on error
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = new GEOSGeometry(
+    "POLYGON ((0 0, 20 0, 20 20, 0 20, 0 0), (5 5, 5 10, 10 10, 10 5, 5 5))");
+printf("holes: %d\n", poly.getNumInteriorRings()); # 1
+    @endcode
+
+    @throw GEOS-ERROR error getting interior ring count or geometry is not a polygon
+
+    @since geos 1.1
+*/
+int GEOSGeometry::getNumInteriorRings() [flags=RET_VALUE_ONLY] {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    int rv = GEOSGetNumInteriorRings_r(ctx, g->getGeometry());
+    if (rv == -1) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getNumInteriorRings")) {
+            xsink->raiseException("GEOS-ERROR",
+                "error getting interior ring count; geometry must be a Polygon");
+        }
+        return QoreValue();
+    }
+    return rv;
+}
+
+//! Returns the start point of a LineString geometry
+/** @return a new GEOSGeometry point
+
+    @throw GEOS-ERROR error getting start point or geometry is not a LineString
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::getStartPoint() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSGeomGetStartPoint_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getStartPoint")) {
+            xsink->raiseException("GEOS-ERROR",
+                "error getting start point; geometry must be a LineString");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns the end point of a LineString geometry
+/** @return a new GEOSGeometry point
+
+    @throw GEOS-ERROR error getting end point or geometry is not a LineString
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::getEndPoint() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSGeomGetEndPoint_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getEndPoint")) {
+            xsink->raiseException("GEOS-ERROR",
+                "error getting end point; geometry must be a LineString");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns the Nth point of a LineString geometry
+/** @param n the zero-based index of the point
+    @return a new GEOSGeometry point
+
+    @throw GEOS-ERROR index out of range, error getting point, or geometry is not a LineString
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::getPointN(int n) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    int num = GEOSGeomGetNumPoints_r(ctx, g->getGeometry());
+    if (num == -1) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getPointN")) {
+            xsink->raiseException("GEOS-ERROR",
+                "error getting point count; geometry must be a LineString");
+        }
+        return QoreValue();
+    }
+    if (n < 0 || n >= num) {
+        xsink->raiseException("GEOS-ERROR", "point index %d out of range (0..%d)", (int)n, num - 1);
+        return QoreValue();
+    }
+    GEOSGeometry* result = GEOSGeomGetPointN_r(ctx, g->getGeometry(), n);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "getPointN")) {
+            xsink->raiseException("GEOS-ERROR",
+                "error getting point at index %d", (int)n);
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns a string describing the reason for geometry invalidity
+/** @return a string such as "Valid Geometry" or a description of the invalidity
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = new GEOSGeometry("POLYGON ((0 0, 10 10, 0 10, 10 0, 0 0))");
+printf("reason: %s\n", poly.isValidReason());
+    @endcode
+
+    @throw GEOS-ERROR error checking validity
+
+    @since geos 1.1
+*/
+string GEOSGeometry::isValidReason() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char* reason = GEOSisValidReason_r(ctx, g->getGeometry());
+    if (!reason) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "isValidReason")) {
+            xsink->raiseException("GEOS-ERROR", "error checking geometry validity");
+        }
+        return QoreValue();
+    }
+    QoreStringNode* rv = new QoreStringNode(reason);
+    GEOSFree_r(ctx, reason);
+    return rv;
+}
+
+//! Returns detailed information about geometry validity
+/** @return a hash with the following keys:
+    - \c "valid" (\c bool): whether the geometry is valid
+    - \c "reason" (\c string): description of invalidity, or @ref nothing if valid
+    - \c "location" (@ref GEOSGeometry or @ref nothing): the point where invalidity was found
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = new GEOSGeometry("POLYGON ((0 0, 10 10, 0 10, 10 0, 0 0))");
+hash<auto> detail = poly.isValidDetail();
+if (!detail.valid) {
+    printf("invalid: %s at %s\n", detail.reason, detail.location.toWKT());
+}
+    @endcode
+
+    @throw GEOS-ERROR error checking validity
+
+    @since geos 1.1
+*/
+hash<auto> GEOSGeometry::isValidDetail() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char* reason = nullptr;
+    GEOSGeometry* location = nullptr;
+    char rv = GEOSisValidDetail_r(ctx, g->getGeometry(), 0, &reason, &location);
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "isValidDetail")) {
+            xsink->raiseException("GEOS-ERROR", "error checking geometry validity detail");
+        }
+        return QoreValue();
+    }
+
+    ReferenceHolder<QoreHashNode> h(new QoreHashNode(autoTypeInfo), xsink);
+    h->setKeyValue("valid", (bool)rv, xsink);
+    if (reason) {
+        h->setKeyValue("reason", new QoreStringNode(reason), xsink);
+        GEOSFree_r(ctx, reason);
+    }
+    if (location) {
+        h->setKeyValue("location",
+            new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(location)), xsink);
+    }
+    return h.release();
+}
+
+//! Repairs an invalid geometry, returning a valid geometry
+/** Uses the default linework method to repair the geometry.
+
+    @return a new valid GEOSGeometry
+
+    @par Example:
+    @code{.py}
+GEOSGeometry invalid = new GEOSGeometry("POLYGON ((0 0, 10 10, 0 10, 10 0, 0 0))");
+GEOSGeometry valid = invalid.makeValid();
+assertTrue(valid.isValid());
+    @endcode
+
+    @throw GEOS-ERROR error repairing geometry
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::makeValid() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSMakeValid_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "makeValid")) {
+            xsink->raiseException("GEOS-ERROR", "error repairing geometry");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Repairs an invalid geometry using the specified method
+/** @param method the repair method: @ref GEOS_MAKE_VALID_LINEWORK or @ref GEOS_MAKE_VALID_STRUCTURE
+    @param keepCollapsed if @ref True, the @ref GEOS_MAKE_VALID_STRUCTURE method will keep
+           components that have collapsed into a lower dimensionality
+    @return a new valid GEOSGeometry
+
+    @par Example:
+    @code{.py}
+GEOSGeometry valid = invalid.makeValidWithParams(GEOS_MAKE_VALID_STRUCTURE, False);
+    @endcode
+
+    @throw GEOS-ERROR error repairing geometry
+
+    @see @ref geos_make_valid_constants
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::makeValidWithParams(int method = 0, bool keepCollapsed = False) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+
+    GEOSMakeValidParams* params = GEOSMakeValidParams_create_r(ctx);
+    if (!params) {
+        xsink->raiseException("GEOS-ERROR", "failed to create MakeValid parameters");
+        return QoreValue();
+    }
+    GEOSMakeValidParams_setMethod_r(ctx, params, static_cast<GEOSMakeValidMethods>(method));
+    GEOSMakeValidParams_setKeepCollapsed_r(ctx, params, keepCollapsed ? 1 : 0);
+
+    GEOSGeometry* result = GEOSMakeValidWithParams_r(ctx, g->getGeometry(), params);
+    GEOSMakeValidParams_destroy_r(ctx, params);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "makeValidWithParams")) {
+            xsink->raiseException("GEOS-ERROR", "error repairing geometry with params");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Simplifies the geometry using the Douglas-Peucker algorithm
+/** @param tolerance the distance tolerance for simplification
+    @return a new simplified GEOSGeometry
+
+    @par Example:
+    @code{.py}
+GEOSGeometry simplified = complex_line.simplify(1.0);
+    @endcode
+
+    @throw GEOS-ERROR error simplifying geometry
+
+    @note This method may produce invalid results for polygon geometries. Use
+          @ref topologyPreserveSimplify() for polygons.
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::simplify(float tolerance) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSSimplify_r(ctx, g->getGeometry(), tolerance);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "simplify")) {
+            xsink->raiseException("GEOS-ERROR", "error simplifying geometry");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Simplifies the geometry while preserving topology
+/** Uses a variant of the Douglas-Peucker algorithm that ensures the result
+    maintains the same topological relationships as the input.
+
+    @param tolerance the distance tolerance for simplification
+    @return a new simplified GEOSGeometry
+
+    @par Example:
+    @code{.py}
+GEOSGeometry simplified = complex_poly.topologyPreserveSimplify(1.0);
+assertTrue(simplified.isValid());
+    @endcode
+
+    @throw GEOS-ERROR error simplifying geometry
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::topologyPreserveSimplify(float tolerance) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSTopologyPreserveSimplify_r(ctx, g->getGeometry(), tolerance);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "topologyPreserveSimplify")) {
+            xsink->raiseException("GEOS-ERROR", "error in topology-preserving simplify");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns a point guaranteed to lie on the surface of this geometry
+/** Unlike @ref centroid(), which can return a point outside a concave polygon,
+    this method always returns a point that lies on or inside the geometry.
+
+    @return a new GEOSGeometry point on the surface
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = new GEOSGeometry("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+GEOSGeometry pt = poly.pointOnSurface();
+assertTrue(poly.contains(pt) || poly.touches(pt));
+    @endcode
+
+    @throw GEOS-ERROR error computing point on surface
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::pointOnSurface() {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSPointOnSurface_r(ctx, g->getGeometry());
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "pointOnSurface")) {
+            xsink->raiseException("GEOS-ERROR", "error computing point on surface");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns the DE-9IM intersection matrix for this geometry and another
+/** @param other the geometry to compute the relationship with
+    @return a 9-character string representing the DE-9IM matrix
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+GEOSGeometry pt = parse_wkt("POINT (5 5)");
+string matrix = poly.relate(pt); # "0F2FF1FF2"
+    @endcode
+
+    @throw GEOS-ERROR error computing relate matrix
+
+    @since geos 1.1
+*/
+string GEOSGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char* matrix = GEOSRelate_r(ctx, g->getGeometry(), other->getGeometry());
+    if (!matrix) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "relate")) {
+            xsink->raiseException("GEOS-ERROR", "error computing DE-9IM relate matrix");
+        }
+        return QoreValue();
+    }
+    QoreStringNode* rv = new QoreStringNode(matrix);
+    GEOSFree_r(ctx, matrix);
+    return rv;
+}
+
+//! Tests whether the DE-9IM intersection matrix for this geometry matches a pattern
+/** @param other the geometry to compute the relationship with
+    @param pattern the DE-9IM pattern to match (may contain T, F, *, 0-9)
+    @return @ref True if the relationship matches the pattern
+
+    @par Example:
+    @code{.py}
+GEOSGeometry poly = parse_wkt("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+GEOSGeometry pt = parse_wkt("POINT (5 5)");
+# "T*****FF*" is the contains pattern
+assertTrue(poly.relatePattern(pt, "T*****FF*"));
+    @endcode
+
+    @throw GEOS-ERROR error testing relate pattern
+
+    @since geos 1.1
+*/
+bool GEOSGeometry::relatePattern(GEOSGeometry[QoreGEOSGeometry] other, string pattern) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    char rv = GEOSRelatePattern_r(ctx, g->getGeometry(), other->getGeometry(), pattern->c_str());
+    if (rv == 2) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "relatePattern")) {
+            xsink->raiseException("GEOS-ERROR", "error testing DE-9IM pattern");
+        }
+        return QoreValue();
+    }
+    return (bool)rv;
+}
+
+//! Computes a buffer with explicit cap and join style options
+/** @param width the buffer distance (positive or negative)
+    @param quadsegs the number of segments to approximate a quarter circle
+    @param endCapStyle the end cap style: @ref GEOSBUF_CAP_ROUND, @ref GEOSBUF_CAP_FLAT, or @ref GEOSBUF_CAP_SQUARE
+    @param joinStyle the join style: @ref GEOSBUF_JOIN_ROUND, @ref GEOSBUF_JOIN_MITRE, or @ref GEOSBUF_JOIN_BEVEL
+    @param mitreLimit the mitre limit ratio (only used with @ref GEOSBUF_JOIN_MITRE)
+    @return a new GEOSGeometry representing the styled buffer
+
+    @par Example:
+    @code{.py}
+GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 0)");
+# buffer with flat end caps
+GEOSGeometry buf = line.bufferWithStyle(2.0, 8, GEOSBUF_CAP_FLAT, GEOSBUF_JOIN_ROUND, 5.0);
+    @endcode
+
+    @throw GEOS-ERROR error computing buffer
+
+    @see @ref geos_buffer_style_constants
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::bufferWithStyle(float width, int quadsegs = 8, int endCapStyle = 1,
+    int joinStyle = 1, float mitreLimit = 5.0) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSBufferWithStyle_r(ctx, g->getGeometry(), width, quadsegs,
+        endCapStyle, joinStyle, mitreLimit);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "bufferWithStyle")) {
+            xsink->raiseException("GEOS-ERROR", "error computing styled buffer");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Computes a single-sided offset curve from a lineal geometry
+/** A positive width offsets to the left, negative to the right.
+
+    @param width the offset distance (positive = left, negative = right)
+    @param quadsegs the number of segments to approximate a quarter circle
+    @param joinStyle the join style: @ref GEOSBUF_JOIN_ROUND, @ref GEOSBUF_JOIN_MITRE, or @ref GEOSBUF_JOIN_BEVEL
+    @param mitreLimit the mitre limit ratio (only used with @ref GEOSBUF_JOIN_MITRE)
+    @return a new GEOSGeometry representing the offset curve
+
+    @par Example:
+    @code{.py}
+GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 0)");
+GEOSGeometry offset = line.offsetCurve(2.0);
+    @endcode
+
+    @throw GEOS-ERROR error computing offset curve
+
+    @since geos 1.1
+*/
+GEOSGeometry GEOSGeometry::offsetCurve(float width, int quadsegs = 8, int joinStyle = 1,
+    float mitreLimit = 5.0) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeometry* result = GEOSOffsetCurve_r(ctx, g->getGeometry(), width, quadsegs,
+        joinStyle, mitreLimit);
+    if (!result) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "offsetCurve")) {
+            xsink->raiseException("GEOS-ERROR", "error computing offset curve");
+        }
+        return QoreValue();
+    }
+    return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+}
+
+//! Returns the GeoJSON representation of this geometry
+/** @param indent the number of spaces for indentation (-1 for compact output, default)
+    @return the GeoJSON string
+
+    @par Example:
+    @code{.py}
+GEOSGeometry pt = parse_wkt("POINT (1 2)");
+string json = pt.toGeoJSON();       # compact
+string pretty = pt.toGeoJSON(2);    # pretty-printed
+    @endcode
+
+    @throw GEOS-ERROR error serializing to GeoJSON
+
+    @since geos 1.1
+*/
+string GEOSGeometry::toGeoJSON(int indent = -1) {
+    GEOSContextHandle_t ctx = geos_get_context();
+    geos_error_msg.clear();
+    GEOSGeoJSONWriter* writer = GEOSGeoJSONWriter_create_r(ctx);
+    if (!writer) {
+        xsink->raiseException("GEOS-ERROR", "failed to create GeoJSON writer");
+        return QoreValue();
+    }
+    char* json = GEOSGeoJSONWriter_writeGeometry_r(ctx, writer, g->getGeometry(), indent);
+    GEOSGeoJSONWriter_destroy_r(ctx, writer);
+    if (!json) {
+        if (!check_geos_error(xsink, "GEOS-ERROR", "toGeoJSON")) {
+            xsink->raiseException("GEOS-ERROR", "error writing GeoJSON");
+        }
+        return QoreValue();
+    }
+    QoreStringNode* rv = new QoreStringNode(json);
+    GEOSFree_r(ctx, json);
+    return rv;
 }

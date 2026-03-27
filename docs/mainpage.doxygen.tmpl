@@ -47,10 +47,16 @@
     - @ref Qore::GEOS::parse_wkb() "parse_wkb()" - Convenience WKB parsing
     - @ref Qore::GEOS::make_wkb() "make_wkb()" - Convenience WKB serialization
 
+    @section geosconstants Constants
+
+    @ref geos_geometry_type_constants "Geometry Type Constants" - integer constants for geometry type
+    identification (\c GEOS_POINT, \c GEOS_LINESTRING, \c GEOS_POLYGON, etc.)
+
     @section geostypes Type Mappings
 
     |!GEOS Type|!Qore Type
     |Coordinate|\c hash<GEOSCoordinate>
+    |Extent (bounding box)|\c hash<GEOSExtent>
     |Geometry|@ref Qore::GEOS::GEOSGeometry "GEOSGeometry"
     |WKT string|\c string
     |WKB data|\c binary
