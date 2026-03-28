@@ -2121,6 +2121,7 @@ GEOSGeometry sub = line.lineSubstring(0.25, 0.75);
 
 */
 GEOSGeometry GEOSGeometry::lineSubstring(float startFraction, float endFraction) {
+#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSLineSubstring_r(ctx, g->getGeometry(), startFraction, endFraction);
@@ -2131,6 +2132,10 @@ GEOSGeometry GEOSGeometry::lineSubstring(float startFraction, float endFraction)
         return QoreValue();
     }
     return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+#else
+    xsink->raiseException("GEOS-ERROR", "lineSubstring() requires GEOS >= 3.12 (installed: " GEOS_VERSION ")");
+    return QoreValue();
+#endif
 }
 
 //! Reverses the coordinate order of a geometry
@@ -2383,6 +2388,7 @@ GEOSGeometry hull = pts.concaveHullByLength(5.0);
 
 */
 GEOSGeometry GEOSGeometry::concaveHullByLength(float length, bool allowHoles = False) {
+#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSConcaveHullByLength_r(ctx, g->getGeometry(), length,
@@ -2394,6 +2400,10 @@ GEOSGeometry GEOSGeometry::concaveHullByLength(float length, bool allowHoles = F
         return QoreValue();
     }
     return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+#else
+    xsink->raiseException("GEOS-ERROR", "concaveHullByLength() requires GEOS >= 3.12 (installed: " GEOS_VERSION ")");
+    return QoreValue();
+#endif
 }
 
 //! Computes a simplified polygon hull of a polygon geometry
@@ -2478,7 +2488,7 @@ GEOSGeometry lec = poly.largestEmptyCircle(obstacles, 0.01);
 GEOSGeometry GEOSGeometry::largestEmptyCircle(GEOSGeometry[QoreGEOSGeometry] obstacles, float tolerance) {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    GEOSGeometry* result = GEOSLargestEmptyCircle_r(ctx, g->getGeometry(), obstacles->getGeometry(),
+    GEOSGeometry* result = GEOSLargestEmptyCircle_r(ctx, obstacles->getGeometry(), g->getGeometry(),
         tolerance);
     if (!result) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "largestEmptyCircle")) {
@@ -2811,6 +2821,7 @@ GEOSGeometry simplified_no_boundary = coverage.coverageSimplifyVW(1.0, False);
     @since geos 1.3
 */
 GEOSGeometry GEOSGeometry::coverageSimplifyVW(float tolerance, bool preserveBoundary = True) {
+#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSCoverageSimplifyVW_r(ctx, g->getGeometry(), tolerance,
@@ -2822,6 +2833,10 @@ GEOSGeometry GEOSGeometry::coverageSimplifyVW(float tolerance, bool preserveBoun
         return QoreValue();
     }
     return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(result));
+#else
+    xsink->raiseException("GEOS-ERROR", "coverageSimplifyVW() requires GEOS >= 3.12 (installed: " GEOS_VERSION ")");
+    return QoreValue();
+#endif
 }
 
 //! Validates a polygonal coverage
@@ -2847,6 +2862,7 @@ if (result.isEmpty()) {
     @since geos 1.3
 */
 GEOSGeometry GEOSGeometry::coverageIsValid(float gapWidth = 0.0) {
+#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* output = nullptr;
@@ -2865,6 +2881,10 @@ GEOSGeometry GEOSGeometry::coverageIsValid(float gapWidth = 0.0) {
         return QoreValue();
     }
     return new QoreObject(QC_GEOSGEOMETRY, getProgram(), new QoreGEOSGeometry(output));
+#else
+    xsink->raiseException("GEOS-ERROR", "coverageIsValid() requires GEOS >= 3.12 (installed: " GEOS_VERSION ")");
+    return QoreValue();
+#endif
 }
 
 //! Extracts the unique points from a geometry

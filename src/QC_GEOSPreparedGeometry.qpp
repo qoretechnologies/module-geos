@@ -304,6 +304,7 @@ bool GEOSPreparedGeometry::distanceWithin(GEOSGeometry[QoreGEOSGeometry] other, 
 
 */
 bool GEOSPreparedGeometry::containsXY(float x, float y) {
+#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSPreparedContainsXY_r(ctx, pg->getPreparedGeometry(), x, y);
@@ -314,6 +315,10 @@ bool GEOSPreparedGeometry::containsXY(float x, float y) {
         return QoreValue();
     }
     return (bool)rv;
+#else
+    xsink->raiseException("GEOS-ERROR", "containsXY() requires GEOS >= 3.12 (installed: " GEOS_VERSION ")");
+    return QoreValue();
+#endif
 }
 
 //! Tests whether the prepared geometry intersects the given point coordinates
@@ -325,6 +330,7 @@ bool GEOSPreparedGeometry::containsXY(float x, float y) {
 
 */
 bool GEOSPreparedGeometry::intersectsXY(float x, float y) {
+#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSPreparedIntersectsXY_r(ctx, pg->getPreparedGeometry(), x, y);
@@ -335,6 +341,10 @@ bool GEOSPreparedGeometry::intersectsXY(float x, float y) {
         return QoreValue();
     }
     return (bool)rv;
+#else
+    xsink->raiseException("GEOS-ERROR", "intersectsXY() requires GEOS >= 3.12 (installed: " GEOS_VERSION ")");
+    return QoreValue();
+#endif
 }
 
 //! Returns the nearest points of the prepared geometry and the given geometry
@@ -387,6 +397,7 @@ list<hash<GEOSCoordinate>> GEOSPreparedGeometry::nearestPoints(GEOSGeometry[Qore
 
 */
 string GEOSPreparedGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) {
+#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char* matrix = GEOSPreparedRelate_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
@@ -399,6 +410,10 @@ string GEOSPreparedGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) {
     QoreStringNode* rv = new QoreStringNode(matrix);
     GEOSFree_r(ctx, matrix);
     return rv;
+#else
+    xsink->raiseException("GEOS-ERROR", "relate() requires GEOS >= 3.12 (installed: " GEOS_VERSION ")");
+    return QoreValue();
+#endif
 }
 
 //! Tests whether the DE-9IM intersection matrix for the prepared geometry matches a pattern
@@ -410,6 +425,7 @@ string GEOSPreparedGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) {
 
 */
 bool GEOSPreparedGeometry::relatePattern(GEOSGeometry[QoreGEOSGeometry] other, string pattern) {
+#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSPreparedRelatePattern_r(ctx, pg->getPreparedGeometry(), other->getGeometry(), pattern->c_str());
@@ -420,4 +436,8 @@ bool GEOSPreparedGeometry::relatePattern(GEOSGeometry[QoreGEOSGeometry] other, s
         return QoreValue();
     }
     return (bool)rv;
+#else
+    xsink->raiseException("GEOS-ERROR", "relatePattern() requires GEOS >= 3.12 (installed: " GEOS_VERSION ")");
+    return QoreValue();
+#endif
 }

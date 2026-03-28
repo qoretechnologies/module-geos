@@ -9,7 +9,13 @@
 %exec-class GeosTest
 
 public class GeosTest inherits QUnit::Test {
+    private {
+        bool m_geos312;
+    }
+
     constructor() : Test("GeosTest", "1.0") {
+        hash<GEOSVersionInfo> vi = get_geos_info();
+        m_geos312 = (vi.major > 3 || (vi.major == 3 && vi.minor >= 12));
         addTestCase("version functions", \versionTests());
         addTestCase("hashdecl types", \hashdeclTests());
         addTestCase("geometry constructors", \constructorTests());
@@ -655,13 +661,15 @@ public class GeosTest inherits QUnit::Test {
         string json_pretty = writer.write(pt, 2);
         assertRegex("\\n", json_pretty, "GeoJSON pretty has newlines");
 
-        # GeoJSONWriter: output dimension
-        int default_dim = writer.getOutputDimension();
-        assertTrue(default_dim >= 2 && default_dim <= 3, "default output dimension is 2 or 3");
-        writer.setOutputDimension(2);
-        assertEq(2, writer.getOutputDimension(), "set output dimension 2");
-        writer.setOutputDimension(3);
-        assertEq(3, writer.getOutputDimension(), "set output dimension 3");
+        # GeoJSONWriter: output dimension (requires GEOS >= 3.12)
+        if (m_geos312) {
+            int default_dim = writer.getOutputDimension();
+            assertTrue(default_dim >= 2 && default_dim <= 3, "default output dimension is 2 or 3");
+            writer.setOutputDimension(2);
+            assertEq(2, writer.getOutputDimension(), "set output dimension 2");
+            writer.setOutputDimension(3);
+            assertEq(3, writer.getOutputDimension(), "set output dimension 3");
+        }
 
         # toGeoJSON method on geometry
         string json_method = poly.toGeoJSON();
@@ -687,13 +695,15 @@ public class GeosTest inherits QUnit::Test {
         GEOSGeometry rt_back = parse_geojson(json_rt);
         assertTrue(rt_poly.equals(rt_back), "GeoJSON round-trip preserves geometry");
 
-        # round-trip with 3D
-        GEOSGeometry pt3d = parse_wkt("POINT Z (1 2 3)");
-        GEOSGeoJSONWriter writer3d();
-        writer3d.setOutputDimension(3);
-        string json3d = writer3d.write(pt3d);
-        GEOSGeometry pt3d_back = parse_geojson(json3d);
-        assertTrue(pt3d_back.hasZ(), "GeoJSON 3D round-trip has Z");
+        # round-trip with 3D (setOutputDimension requires GEOS >= 3.12)
+        if (m_geos312) {
+            GEOSGeometry pt3d = parse_wkt("POINT Z (1 2 3)");
+            GEOSGeoJSONWriter writer3d();
+            writer3d.setOutputDimension(3);
+            string json3d = writer3d.write(pt3d);
+            GEOSGeometry pt3d_back = parse_geojson(json3d);
+            assertTrue(pt3d_back.hasZ(), "GeoJSON 3D round-trip has Z");
+        }
 
         # negative: invalid GeoJSON
         assertThrows("GEOS-ERROR", sub() {
@@ -1476,18 +1486,20 @@ public class GeosTest inherits QUnit::Test {
         assertTrue(merged_dir.numGeometries() <= ml_dir.numGeometries(),
             "lineMergeDirected merges directed lines");
 
-        # lineSubstring: extract middle portion
-        GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 0)");
-        GEOSGeometry substr = line.lineSubstring(0.25, 0.75);
-        assertEq("LineString", substr.geometryType(), "lineSubstring type");
-        float substr_len = substr.length();
-        float full_len = line.length();
-        assertTrue(substr_len < full_len, "lineSubstring shorter than original");
-        assertFloatEq(5.0, substr_len, "lineSubstring 0.25-0.75 of length 10 = 5");
+        # lineSubstring: extract middle portion (requires GEOS >= 3.12)
+        if (m_geos312) {
+            GEOSGeometry line = parse_wkt("LINESTRING (0 0, 10 0)");
+            GEOSGeometry substr = line.lineSubstring(0.25, 0.75);
+            assertEq("LineString", substr.geometryType(), "lineSubstring type");
+            float substr_len = substr.length();
+            float full_len = line.length();
+            assertTrue(substr_len < full_len, "lineSubstring shorter than original");
+            assertFloatEq(5.0, substr_len, "lineSubstring 0.25-0.75 of length 10 = 5");
 
-        # lineSubstring: full range returns equivalent length
-        GEOSGeometry substr_full = line.lineSubstring(0.0, 1.0);
-        assertFloatEq(full_len, substr_full.length(), "lineSubstring 0.0-1.0 same length");
+            # lineSubstring: full range returns equivalent length
+            GEOSGeometry substr_full = line.lineSubstring(0.0, 1.0);
+            assertFloatEq(full_len, substr_full.length(), "lineSubstring 0.0-1.0 same length");
+        }
 
         # reverse: start and end points swap
         GEOSGeometry line2 = parse_wkt("LINESTRING (1 2, 3 4, 5 6)");
@@ -1566,12 +1578,14 @@ public class GeosTest inherits QUnit::Test {
         assertFloatEq(convex.area(), concave.area(),
             "concaveHull(1.0) area matches convex hull");
 
-        # concaveHullByLength with large length approximates convex hull
-        GEOSGeometry concave_len = pts.concaveHullByLength(1000.0);
-        assertEq("Polygon", concave_len.geometryType(),
-            "concaveHullByLength returns polygon");
-        assertFloatEq(convex.area(), concave_len.area(),
-            "concaveHullByLength(large) area matches convex hull");
+        # concaveHullByLength with large length approximates convex hull (requires GEOS >= 3.12)
+        if (m_geos312) {
+            GEOSGeometry concave_len = pts.concaveHullByLength(1000.0);
+            assertEq("Polygon", concave_len.geometryType(),
+                "concaveHullByLength returns polygon");
+            assertFloatEq(convex.area(), concave_len.area(),
+                "concaveHullByLength(large) area matches convex hull");
+        }
 
         # polygonHullSimplify with vertexFraction=1.0 on polygon
         GEOSGeometry hull_poly = parse_wkt(
@@ -1618,24 +1632,28 @@ public class GeosTest inherits QUnit::Test {
         assertTrue(pg.distanceWithin(inner, 20.0), "prepared distanceWithin true");
         assertFalse(pg.distanceWithin(outer, 1.0), "prepared distanceWithin false");
 
-        # containsXY / intersectsXY
-        assertTrue(pg.containsXY(5.0, 5.0), "prepared containsXY inside");
-        assertFalse(pg.containsXY(20.0, 20.0), "prepared containsXY outside");
-        assertTrue(pg.intersectsXY(5.0, 5.0), "prepared intersectsXY inside");
-        assertTrue(pg.intersectsXY(10.0, 5.0), "prepared intersectsXY edge");
-        assertFalse(pg.intersectsXY(20.0, 20.0), "prepared intersectsXY outside");
+        # containsXY / intersectsXY (requires GEOS >= 3.12)
+        if (m_geos312) {
+            assertTrue(pg.containsXY(5.0, 5.0), "prepared containsXY inside");
+            assertFalse(pg.containsXY(20.0, 20.0), "prepared containsXY outside");
+            assertTrue(pg.intersectsXY(5.0, 5.0), "prepared intersectsXY inside");
+            assertTrue(pg.intersectsXY(10.0, 5.0), "prepared intersectsXY edge");
+            assertFalse(pg.intersectsXY(20.0, 20.0), "prepared intersectsXY outside");
+        }
 
         # nearestPoints
         list<hash<GEOSCoordinate>> np = pg.nearestPoints(outer);
         assertEq(2, np.size(), "prepared nearestPoints 2 points");
 
-        # relate
-        string matrix = pg.relate(inner);
-        assertEq(9, matrix.size(), "prepared relate 9 chars");
+        # relate (requires GEOS >= 3.12)
+        if (m_geos312) {
+            string matrix = pg.relate(inner);
+            assertEq(9, matrix.size(), "prepared relate 9 chars");
 
-        # relatePattern
-        assertTrue(pg.relatePattern(inner, "T*****FF*"), "prepared relatePattern contains");
-        assertFalse(pg.relatePattern(outer, "T*****FF*"), "prepared relatePattern not contains");
+            # relatePattern
+            assertTrue(pg.relatePattern(inner, "T*****FF*"), "prepared relatePattern contains");
+            assertFalse(pg.relatePattern(outer, "T*****FF*"), "prepared relatePattern not contains");
+        }
     }
 
     advancedGeometricAnalysisTests() {
@@ -1745,6 +1763,10 @@ public class GeosTest inherits QUnit::Test {
     }
 
     clusteringTests() {
+        if (!m_geos312) {
+            testSkip("requires GEOS >= 3.12");
+            return;
+        }
         # DBSCAN on well-separated groups
         GEOSGeometry points = parse_wkt("MULTIPOINT ((0 0), (1 0), (0 1), (10 10), (11 10), (10 11), (50 50))");
         hash<auto> result = geos_cluster_dbscan(points, 3.0, 2);
@@ -1770,13 +1792,14 @@ public class GeosTest inherits QUnit::Test {
         assertTrue(union_result.isValid(), "coverageUnion valid");
         assertFloatEq(50.0, union_result.area(), "coverageUnion area");
 
-        # coverageSimplifyVW
-        GEOSGeometry simplified = coverage.coverageSimplifyVW(1.0);
-        assertTrue(simplified.isValid(), "coverageSimplifyVW valid");
+        # coverageSimplifyVW and coverageIsValid (require GEOS >= 3.12)
+        if (m_geos312) {
+            GEOSGeometry simplified = coverage.coverageSimplifyVW(1.0);
+            assertTrue(simplified.isValid(), "coverageSimplifyVW valid");
 
-        # coverageIsValid
-        GEOSGeometry valid_result = coverage.coverageIsValid(0.0);
-        assertTrue(valid_result.isEmpty(), "coverageIsValid on valid coverage returns empty");
+            GEOSGeometry valid_result = coverage.coverageIsValid(0.0);
+            assertTrue(valid_result.isEmpty(), "coverageIsValid on valid coverage returns empty");
+        }
     }
 
     miscUtilityTests() {
@@ -1816,20 +1839,22 @@ public class GeosTest inherits QUnit::Test {
         assertFloatEq(5.0, isect.x, "segment intersection x");
         assertFloatEq(5.0, isect.y, "segment intersection y");
 
-        # STRtree build and iterate
-        GEOSSTRtree tree(10);
-        GEOSGeometry g1 = parse_wkt("POINT (1 1)");
-        GEOSGeometry g2 = parse_wkt("POINT (2 2)");
-        GEOSGeometry g3 = parse_wkt("POINT (3 3)");
-        tree.insert(g1, "item1");
-        tree.insert(g2, "item2");
-        tree.insert(g3, "item3");
-        tree.build();
-        list<auto> items = tree.iterate();
-        assertEq(3, items.size(), "iterate returns all items");
-        # items may be in any order, check that all are present
-        list<auto> sorted_items = sort(items);
-        assertEq(("item1", "item2", "item3"), sorted_items, "iterate contains all items");
+        # STRtree build and iterate (requires GEOS >= 3.12)
+        if (m_geos312) {
+            GEOSSTRtree tree(10);
+            GEOSGeometry g1 = parse_wkt("POINT (1 1)");
+            GEOSGeometry g2 = parse_wkt("POINT (2 2)");
+            GEOSGeometry g3 = parse_wkt("POINT (3 3)");
+            tree.insert(g1, "item1");
+            tree.insert(g2, "item2");
+            tree.insert(g3, "item3");
+            tree.build();
+            list<auto> items = tree.iterate();
+            assertEq(3, items.size(), "iterate returns all items");
+            # items may be in any order, check that all are present
+            list<auto> sorted_items = sort(items);
+            assertEq(("item1", "item2", "item3"), sorted_items, "iterate contains all items");
+        }
     }
 
     private assertFloatEq(float expected, float actual, string msg) {
