@@ -833,7 +833,7 @@ printf("assignments: %y\n", result.assignments);
     @since geos 1.3
 */
 hash<auto> geos_cluster_dbscan(GEOSGeometry[QoreGEOSGeometry] geom, float eps, int minPoints) {
-#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
+#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 14)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSClusterInfo* info = GEOSClusterDBSCAN_r(ctx, geom->getGeometry(), eps, minPoints);
@@ -870,7 +870,7 @@ hash<auto> geos_cluster_dbscan(GEOSGeometry[QoreGEOSGeometry] geom, float eps, i
     h->setKeyValue("assignments", assign_list.release(), xsink);
     return h.release();
 #else
-    xsink->raiseException("GEOS-ERROR", "geos_cluster_dbscan() requires GEOS >= 3.12 (installed: " GEOS_VERSION ")");
+    xsink->raiseException("GEOS-ERROR", "geos_cluster_dbscan() requires GEOS >= 3.14 (installed: " GEOS_VERSION ")");
     return QoreValue();
 #endif
 }

@@ -11,11 +11,13 @@
 public class GeosTest inherits QUnit::Test {
     private {
         bool m_geos312;
+        bool m_geos314;
     }
 
     constructor() : Test("GeosTest", "1.0") {
         hash<GEOSVersionInfo> vi = get_geos_info();
         m_geos312 = (vi.major > 3 || (vi.major == 3 && vi.minor >= 12));
+        m_geos314 = (vi.major > 3 || (vi.major == 3 && vi.minor >= 14));
         addTestCase("version functions", \versionTests());
         addTestCase("hashdecl types", \hashdeclTests());
         addTestCase("geometry constructors", \constructorTests());
@@ -661,8 +663,8 @@ public class GeosTest inherits QUnit::Test {
         string json_pretty = writer.write(pt, 2);
         assertRegex("\\n", json_pretty, "GeoJSON pretty has newlines");
 
-        # GeoJSONWriter: output dimension (requires GEOS >= 3.12)
-        if (m_geos312) {
+        # GeoJSONWriter: output dimension (requires GEOS >= 3.14)
+        if (m_geos314) {
             int default_dim = writer.getOutputDimension();
             assertTrue(default_dim >= 2 && default_dim <= 3, "default output dimension is 2 or 3");
             writer.setOutputDimension(2);
@@ -695,8 +697,8 @@ public class GeosTest inherits QUnit::Test {
         GEOSGeometry rt_back = parse_geojson(json_rt);
         assertTrue(rt_poly.equals(rt_back), "GeoJSON round-trip preserves geometry");
 
-        # round-trip with 3D (setOutputDimension requires GEOS >= 3.12)
-        if (m_geos312) {
+        # round-trip with 3D (setOutputDimension requires GEOS >= 3.14)
+        if (m_geos314) {
             GEOSGeometry pt3d = parse_wkt("POINT Z (1 2 3)");
             GEOSGeoJSONWriter writer3d();
             writer3d.setOutputDimension(3);
@@ -1763,8 +1765,8 @@ public class GeosTest inherits QUnit::Test {
     }
 
     clusteringTests() {
-        if (!m_geos312) {
-            testSkip("requires GEOS >= 3.12");
+        if (!m_geos314) {
+            testSkip("requires GEOS >= 3.14");
             return;
         }
         # DBSCAN on well-separated groups

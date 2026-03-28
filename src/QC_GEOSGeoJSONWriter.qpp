@@ -74,10 +74,10 @@ string GEOSGeoJSONWriter::write(GEOSGeometry[QoreGEOSGeometry] geom, int indent 
 /** @param dim the output dimension (2 for 2D, 3 for 3D)
 */
 nothing GEOSGeoJSONWriter::setOutputDimension(int dim) {
-#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
+#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 14)
     GEOSGeoJSONWriter_setOutputDimension_r(geos_get_context(), w->getWriter(), dim);
 #else
-    xsink->raiseException("GEOS-ERROR", "setOutputDimension() requires GEOS >= 3.12 (installed: " GEOS_VERSION ")");
+    xsink->raiseException("GEOS-ERROR", "setOutputDimension() requires GEOS >= 3.14 (installed: " GEOS_VERSION ")");
 #endif
 }
 
@@ -85,10 +85,10 @@ nothing GEOSGeoJSONWriter::setOutputDimension(int dim) {
 /** @return the output dimension (2 or 3)
 */
 int GEOSGeoJSONWriter::getOutputDimension() [flags=RET_VALUE_ONLY] {
-#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
+#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 14)
     return GEOSGeoJSONWriter_getOutputDimension_r(geos_get_context(), w->getWriter());
 #else
-    xsink->raiseException("GEOS-ERROR", "getOutputDimension() requires GEOS >= 3.12 (installed: " GEOS_VERSION ")");
+    xsink->raiseException("GEOS-ERROR", "getOutputDimension() requires GEOS >= 3.14 (installed: " GEOS_VERSION ")");
     return QoreValue();
 #endif
 }
