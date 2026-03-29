@@ -2,7 +2,6 @@
 # -*- mode: qore; indent-tabs-mode: nil -*-
 
 %modern
-%enable-all-warnings
 %requires geos
 %requires GEOSDataProvider
 %requires QUnit
@@ -502,9 +501,15 @@ public class GEOSDataProviderTest inherits QUnit::Test {
 
         assertEq(3, records.size(), "geojson read 3 records");
         assertEq("Point", records[0].type, "geojson read record 0 type");
+        assertEq('{"type":"Point","coordinates":[1,2]}', records[0].geometry,
+            "geojson read record 0 geometry");
         assertEq(1, records[0].line_number, "geojson read record 0 line");
         assertEq("LineString", records[1].type, "geojson read record 1 type");
+        assertEq('{"type":"LineString","coordinates":[[0,0],[10,10]]}', records[1].geometry,
+            "geojson read record 1 geometry");
+        assertEq(2, records[1].line_number, "geojson read record 1 line");
         assertEq("Polygon", records[2].type, "geojson read record 2 type");
+        assertEq(3, records[2].line_number, "geojson read record 2 line");
     }
 
     geojsonWriteReadRoundTripTests() {
@@ -520,7 +525,9 @@ public class GEOSDataProviderTest inherits QUnit::Test {
         list<auto> records = map $1, reader.searchRecords();
         assertEq(2, records.size(), "geojson roundtrip 2 records");
         assertEq("Point", records[0].type, "geojson roundtrip type 0");
+        assertRegex("coordinates", records[0].geometry, "geojson roundtrip geometry 0 has coordinates");
         assertEq("Point", records[1].type, "geojson roundtrip type 1");
+        assertRegex("coordinates", records[1].geometry, "geojson roundtrip geometry 1 has coordinates");
     }
 
     geojsonWriteWktInputTests() {

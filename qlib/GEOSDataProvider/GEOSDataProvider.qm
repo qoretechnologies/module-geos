@@ -271,6 +271,7 @@ namespace Priv {
             "desc": "Write WKT geometry data to a file location",
             "action_code": DPAT_CREATE,
             "cls": "GEOSDataProvider::GEOSWktWriteDataProvider",
+            "output_type": GEOSWktWriteDataProvider::RecordType,
             "options": DataProviderActionCatalog::getActionOptionFromFields(
                 GEOSWktWriteDataProvider::ConstructorOptions{"path",}, {
                     "preselected": True,
@@ -301,7 +302,12 @@ namespace Priv {
                     "loc": "constructor",
                 }
             ) + DataProviderActionCatalog::getActionOptionFromFields(
-                GEOSWkbReadDataProvider::ConstructorOptions - ("path", "data", "stream"), {
+                GEOSWkbReadDataProvider::ConstructorOptions{"format",}, {
+                    "preselected": True,
+                    "loc": "constructor",
+                }
+            ) + DataProviderActionCatalog::getActionOptionFromFields(
+                GEOSWkbReadDataProvider::ConstructorOptions - ("path", "data", "stream", "format"), {
                     "loc": "constructor",
                 }
             ),
@@ -316,6 +322,7 @@ namespace Priv {
             "desc": "Write WKB geometry data to a file location",
             "action_code": DPAT_CREATE,
             "cls": "GEOSDataProvider::GEOSWkbWriteDataProvider",
+            "output_type": GEOSWkbWriteDataProvider::RecordType,
             "options": DataProviderActionCatalog::getActionOptionFromFields(
                 GEOSWkbWriteDataProvider::ConstructorOptions{"path",}, {
                     "preselected": True,
@@ -323,7 +330,12 @@ namespace Priv {
                     "loc": "constructor",
                 }
             ) + DataProviderActionCatalog::getActionOptionFromFields(
-                GEOSWkbWriteDataProvider::ConstructorOptions - ("path", "stream"), {
+                GEOSWkbWriteDataProvider::ConstructorOptions{"format",}, {
+                    "preselected": True,
+                    "loc": "constructor",
+                }
+            ) + DataProviderActionCatalog::getActionOptionFromFields(
+                GEOSWkbWriteDataProvider::ConstructorOptions - ("path", "stream", "format"), {
                     "loc": "constructor",
                 }
             ),
@@ -361,6 +373,7 @@ namespace Priv {
             "desc": "Write GeoJSON geometry data to a file location (line-delimited GeoJSON format)",
             "action_code": DPAT_CREATE,
             "cls": "GEOSDataProvider::GEOSGeoJsonWriteDataProvider",
+            "output_type": GEOSGeoJsonWriteDataProvider::RecordType,
             "options": DataProviderActionCatalog::getActionOptionFromFields(
                 GEOSGeoJsonWriteDataProvider::ConstructorOptions{"path",}, {
                     "preselected": True,

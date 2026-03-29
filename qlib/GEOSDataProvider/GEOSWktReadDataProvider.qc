@@ -117,7 +117,7 @@ public class GEOSWktReadDataProvider inherits DataProvider::AbstractDataProvider
             "type": {
                 "display_name": "Geometry Type",
                 "short_desc": "The type of the geometry",
-                "desc": "The geometry type (e.g., Point, LineString, Polygon)",
+                "desc": "The geometry type (e.g., `Point`, `LineString`, `Polygon`)",
                 "type": StringType,
             },
             "line_number": {
