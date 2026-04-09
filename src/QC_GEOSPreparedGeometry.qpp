@@ -397,7 +397,7 @@ list<hash<GEOSCoordinate>> GEOSPreparedGeometry::nearestPoints(GEOSGeometry[Qore
 
 */
 string GEOSPreparedGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) {
-#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
+#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 14)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char* matrix = GEOSPreparedRelate_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
@@ -411,7 +411,7 @@ string GEOSPreparedGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) {
     GEOSFree_r(ctx, matrix);
     return rv;
 #else
-    xsink->raiseException("GEOS-ERROR", "relate() requires GEOS >= 3.12 (installed: " GEOS_VERSION ")");
+    xsink->raiseException("GEOS-ERROR", "relate() requires GEOS >= 3.14 (installed: " GEOS_VERSION ")");
     return QoreValue();
 #endif
 }
@@ -425,7 +425,7 @@ string GEOSPreparedGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) {
 
 */
 bool GEOSPreparedGeometry::relatePattern(GEOSGeometry[QoreGEOSGeometry] other, string pattern) {
-#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
+#if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 14)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSPreparedRelatePattern_r(ctx, pg->getPreparedGeometry(), other->getGeometry(), pattern->c_str());
@@ -437,7 +437,7 @@ bool GEOSPreparedGeometry::relatePattern(GEOSGeometry[QoreGEOSGeometry] other, s
     }
     return (bool)rv;
 #else
-    xsink->raiseException("GEOS-ERROR", "relatePattern() requires GEOS >= 3.12 (installed: " GEOS_VERSION ")");
+    xsink->raiseException("GEOS-ERROR", "relatePattern() requires GEOS >= 3.14 (installed: " GEOS_VERSION ")");
     return QoreValue();
 #endif
 }

@@ -1647,8 +1647,8 @@ public class GeosTest inherits QUnit::Test {
         list<hash<GEOSCoordinate>> np = pg.nearestPoints(outer);
         assertEq(2, np.size(), "prepared nearestPoints 2 points");
 
-        # relate (requires GEOS >= 3.12)
-        if (m_geos312) {
+        # relate (requires GEOS >= 3.14)
+        if (m_geos314) {
             string matrix = pg.relate(inner);
             assertEq(9, matrix.size(), "prepared relate 9 chars");
 
