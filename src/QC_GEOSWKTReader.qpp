@@ -51,7 +51,7 @@ GEOSWKTReader::constructor() {
 
     @throw GEOS-ERROR error parsing WKT string
 */
-GEOSGeometry GEOSWKTReader::read(string wkt) {
+GEOSGeometry GEOSWKTReader::read(string wkt) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* geom = GEOSWKTReader_read_r(ctx, r->getReader(), wkt->c_str());

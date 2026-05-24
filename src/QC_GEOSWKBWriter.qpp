@@ -47,16 +47,16 @@ GEOSWKBWriter::constructor() {
 }
 
 //! Writes a geometry to WKB binary data
-/** @param geom the geometry to serialize
+/** @param geometry the geometry to serialize
     @return the WKB binary data
 
     @throw GEOS-ERROR error writing WKB
 */
-binary GEOSWKBWriter::write(GEOSGeometry[QoreGEOSGeometry] geom) {
+binary GEOSWKBWriter::write(GEOSGeometry[QoreGEOSGeometry] geometry) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     size_t size;
-    unsigned char* wkb = GEOSWKBWriter_write_r(ctx, w->getWriter(), geom->getGeometry(), &size);
+    unsigned char* wkb = GEOSWKBWriter_write_r(ctx, w->getWriter(), geometry->getGeometry(), &size);
     if (!wkb) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "WKBWriter::write")) {
             xsink->raiseException("GEOS-ERROR", "error writing WKB");
@@ -70,16 +70,16 @@ binary GEOSWKBWriter::write(GEOSGeometry[QoreGEOSGeometry] geom) {
 }
 
 //! Writes a geometry to a hex-encoded WKB string
-/** @param geom the geometry to serialize
+/** @param geometry the geometry to serialize
     @return the hex-encoded WKB string
 
     @throw GEOS-ERROR error writing hex WKB
 */
-string GEOSWKBWriter::writeHEX(GEOSGeometry[QoreGEOSGeometry] geom) {
+string GEOSWKBWriter::writeHEX(GEOSGeometry[QoreGEOSGeometry] geometry) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     size_t size;
-    unsigned char* hex = GEOSWKBWriter_writeHEX_r(ctx, w->getWriter(), geom->getGeometry(), &size);
+    unsigned char* hex = GEOSWKBWriter_writeHEX_r(ctx, w->getWriter(), geometry->getGeometry(), &size);
     if (!hex) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "WKBWriter::writeHEX")) {
             xsink->raiseException("GEOS-ERROR", "error writing hex WKB");
@@ -94,20 +94,20 @@ string GEOSWKBWriter::writeHEX(GEOSGeometry[QoreGEOSGeometry] geom) {
 //! Sets the byte order for WKB output
 /** @param order 0 for big-endian (XDR), 1 for little-endian (NDR)
 */
-nothing GEOSWKBWriter::setByteOrder(int order) {
+nothing GEOSWKBWriter::setByteOrder(int order) [flags=NAMED_ARGS] {
     GEOSWKBWriter_setByteOrder_r(geos_get_context(), w->getWriter(), order);
 }
 
 //! Sets the output dimension (2 or 3)
-/** @param dim the output dimension
+/** @param dimension the output dimension
 */
-nothing GEOSWKBWriter::setOutputDimension(int dim) {
-    GEOSWKBWriter_setOutputDimension_r(geos_get_context(), w->getWriter(), dim);
+nothing GEOSWKBWriter::setOutputDimension(int dimension) [flags=NAMED_ARGS] {
+    GEOSWKBWriter_setOutputDimension_r(geos_get_context(), w->getWriter(), dimension);
 }
 
 //! Sets whether to include the SRID in the output
-/** @param includeSRID @ref True to include the SRID
+/** @param include_srid @ref True to include the SRID
 */
-nothing GEOSWKBWriter::setIncludeSRID(bool includeSRID) {
-    GEOSWKBWriter_setIncludeSRID_r(geos_get_context(), w->getWriter(), includeSRID ? 1 : 0);
+nothing GEOSWKBWriter::setIncludeSRID(bool include_srid) [flags=NAMED_ARGS] {
+    GEOSWKBWriter_setIncludeSRID_r(geos_get_context(), w->getWriter(), include_srid ? 1 : 0);
 }

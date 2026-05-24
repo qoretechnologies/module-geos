@@ -60,6 +60,7 @@ public class GeosTest inherits QUnit::Test {
         addTestCase("coordinate transformation", \coordinateTransformTests());
         addTestCase("clustering", \clusteringTests());
         addTestCase("coverage operations", \coverageOperationTests());
+        addTestCase("named arguments", \namedArgumentTests());
         addTestCase("misc utilities", \miscUtilityTests());
 
         set_return_value(main());
@@ -1802,6 +1803,167 @@ public class GeosTest inherits QUnit::Test {
             GEOSGeometry valid_result = coverage.coverageIsValid(0.0);
             assertTrue(valid_result.isEmpty(), "coverageIsValid on valid coverage returns empty");
         }
+    }
+
+    namedArgumentTests() {
+        GEOSGeometry pt = new GEOSGeometry(wkt: "POINT (1 2)");
+        binary pt_wkb = pt.toWKB();
+        GEOSGeometry pt_from_wkb = new GEOSGeometry(wkb: pt_wkb);
+        assertTrue(pt.equals(other: pt_from_wkb), "named WKB constructor");
+
+        GEOSGeometry parsed = parse_wkt(wkt: "POINT (1 2)");
+        assertEq("POINT (1 2)", make_wkt(geometry: parsed), "named make_wkt");
+        assertTrue(parse_wkb(wkb: make_wkb(geometry: parsed)).equals(other: parsed), "named WKB round trip");
+
+        GEOSGeometry pt2 = geos_create_point(x: 3.0, y: 4.0);
+        GEOSGeometry pt3 = geos_create_point(x: 3.0, y: 4.0, z: 5.0);
+        assertFloatEq(3.0, pt2.getX(), "named point x");
+        assertTrue(pt3.hasZ(), "named point z");
+
+        list<hash<auto>> ring = (
+            {"x": 0.0, "y": 0.0}, {"x": 10.0, "y": 0.0},
+            {"x": 10.0, "y": 10.0}, {"x": 0.0, "y": 10.0},
+            {"x": 0.0, "y": 0.0},
+        );
+        GEOSGeometry line = geos_create_linestring(coordinates: (ring[0], ring[1], ring[2]));
+        GEOSGeometry poly = geos_create_polygon(exterior: ring);
+        assertEq("LineString", line.geometryType(), "named linestring");
+        assertFloatEq(100.0, poly.area(), "named polygon");
+
+        GEOSGeometry collection = geos_create_collection(
+            geometries: (parse_wkt(wkt: "POINT (0 0)"), parse_wkt(wkt: "POINT (1 1)")),
+            geometry_type: GEOS_MULTIPOINT);
+        assertEq(2, collection.numGeometries(), "named collection");
+        assertTrue(geos_create_empty_collection(geometry_type: GEOS_MULTIPOINT).isEmpty(), "named empty collection");
+
+        GEOSGeometry rect = geos_create_rectangle(xmin: 0.0, ymin: 0.0, xmax: 10.0, ymax: 5.0);
+        assertFloatEq(50.0, rect.area(), "named rectangle");
+        assertTrue(geos_relate_pattern_match(matrix: poly.relate(other: pt), pattern: "T********"), "named relate pattern");
+
+        string geojson = make_geojson(geometry: pt, indent: 0);
+        assertTrue(parse_geojson(geojson: geojson).equals(other: pt), "named GeoJSON round trip");
+
+        GEOSWKTReader wkt_reader();
+        GEOSWKTWriter wkt_writer();
+        wkt_writer.setTrim(enabled: True);
+        wkt_writer.setRoundingPrecision(precision: 3);
+        wkt_writer.setOutputDimension(dimension: 2);
+        assertEq("POINT (1 2)", wkt_writer.write(geometry: wkt_reader.read(wkt: "POINT (1 2)")), "named WKT reader/writer");
+
+        GEOSWKBWriter wkb_writer();
+        GEOSWKBReader wkb_reader();
+        wkb_writer.setByteOrder(order: 1);
+        wkb_writer.setOutputDimension(dimension: 2);
+        wkb_writer.setIncludeSRID(include_srid: False);
+        assertTrue(wkb_reader.read(wkb: wkb_writer.write(geometry: pt)).equals(other: pt), "named WKB reader/writer");
+        assertTrue(wkb_reader.readHEX(hex: wkb_writer.writeHEX(geometry: pt)).equals(other: pt), "named WKB HEX");
+
+        GEOSGeoJSONReader geojson_reader();
+        GEOSGeoJSONWriter geojson_writer();
+        if (m_geos314) {
+            geojson_writer.setOutputDimension(dimension: 2);
+        }
+        assertTrue(geojson_reader.read(geojson: geojson_writer.write(geometry: pt, indent: 0)).equals(other: pt),
+            "named GeoJSON reader/writer");
+
+        assertTrue(poly.contains(other: pt), "named contains");
+        assertTrue(poly.distanceWithin(other: pt, distance: 0.0), "named distanceWithin");
+        assertTrue(poly.buffer(width: 1.0, quad_segments: 4).area() > poly.area(), "named buffer");
+        assertTrue(poly.bufferWithStyle(width: 1.0, quad_segments: 4, end_cap_style: GEOSBUF_CAP_ROUND,
+            join_style: GEOSBUF_JOIN_ROUND, mitre_limit: 5.0).isValid(), "named bufferWithStyle");
+        assertTrue(line.offsetCurve(width: 1.0, quad_segments: 4, join_style: GEOSBUF_JOIN_ROUND,
+            mitre_limit: 5.0).isValid(), "named offsetCurve");
+        assertFloatEq(0.0, collection.getGeometryN(index: 0).distance(other: parse_wkt(wkt: "POINT (0 0)")),
+            "named getGeometryN");
+        assertTrue(poly.equalsExact(other: poly.copy(), tolerance: 0.0), "named equalsExact");
+        assertTrue(poly.simplify(tolerance: 0.1).isValid(), "named simplify");
+        assertTrue(poly.topologyPreserveSimplify(tolerance: 0.1).isValid(), "named topologyPreserveSimplify");
+        assertEq("Polygon", poly.makeValidWithParams(method: 0, keep_collapsed: False).geometryType(),
+            "named makeValidWithParams");
+
+        GEOSGeometry multiline = parse_wkt(wkt: "LINESTRING (0 0, 10 0)");
+        assertFloatEq(5.0, multiline.project(point: parse_wkt(wkt: "POINT (5 0)")), "named project");
+        assertFloatEq(0.5, multiline.projectNormalized(point: parse_wkt(wkt: "POINT (5 0)")),
+            "named normalized project");
+        assertEq("Point", multiline.interpolate(distance: 5.0).geometryType(), "named interpolate");
+        assertEq("Point", multiline.interpolateNormalized(fraction: 0.5).geometryType(), "named normalized interpolate");
+        assertEq("LineString", multiline.lineSubstring(start_fraction: 0.0, end_fraction: 0.5).geometryType(),
+            "named lineSubstring");
+
+        assertGt(0.0, poly.nearestPoints(other: pt2).size(), "named nearestPoints");
+        assertTrue(poly.intersection(other: rect).isValid(), "named intersection");
+        assertTrue(poly.geomUnion(other: rect).isValid(), "named union");
+        assertTrue(poly.difference(other: rect).isValid(), "named difference");
+        assertTrue(poly.symDifference(other: rect).isValid(), "named symDifference");
+        assertTrue(poly.snap(other: rect, tolerance: 0.1).isValid(), "named snap");
+        assertTrue(line.sharedPaths(other: line).isValid(), "named sharedPaths");
+        assertTrue(poly.setPrecision(grid_size: 0.01, precision_flags: 0).isValid(), "named setPrecision");
+        assertTrue(line.removeRepeatedPoints(tolerance: 0.0).isValid(), "named removeRepeatedPoints");
+        assertTrue(line.densify(tolerance: 2.0).isValid(), "named densify");
+        assertTrue(line.transformXY(callback: auto sub (float x, float y) { return (x + 1.0, y + 1.0); }).isValid(),
+            "named transformXY");
+
+        assertFloatEq(0.0, poly.hausdorffDistance(other: poly.copy()), "named Hausdorff");
+        assertFloatEq(0.0, poly.hausdorffDistanceDensify(other: poly.copy(), densify_fraction: 0.5),
+            "named Hausdorff densify");
+        assertFloatEq(0.0, line.frechetDistance(other: line.copy()), "named Frechet");
+        assertFloatEq(0.0, line.frechetDistanceDensify(other: line.copy(), densify_fraction: 0.5),
+            "named Frechet densify");
+        assertFloatEq(0.0, poly.distanceIndexed(other: poly.copy()), "named indexed distance");
+        assertTrue(poly.clipByRect(xmin: 0.0, ymin: 0.0, xmax: 5.0, ymax: 5.0).isValid(), "named clip");
+
+        GEOSGeometry points = parse_wkt(wkt: "MULTIPOINT ((0 0), (10 0), (5 10), (10 10))");
+        assertTrue(points.delaunayTriangulation(tolerance: 0.0, only_edges: True).isValid(),
+            "named delaunay");
+        assertTrue(points.voronoiDiagram(tolerance: 0.0, only_edges: True).isValid(), "named voronoi");
+        assertTrue(points.concaveHull(ratio: 1.0, allow_holes: False).isValid(), "named concaveHull");
+        if (m_geos312) {
+            assertTrue(points.concaveHullByLength(length: 20.0, allow_holes: False).isValid(),
+                "named concaveHullByLength");
+        }
+        assertTrue(poly.polygonHullSimplify(outer: True, vertex_fraction: 1.0).isValid(),
+            "named polygonHullSimplify");
+        assertTrue(poly.maximumInscribedCircle(tolerance: 1.0).isValid(), "named maximumInscribedCircle");
+        assertTrue(poly.largestEmptyCircle(obstacles: pt, tolerance: 1.0).isValid(), "named largestEmptyCircle");
+
+        if (m_geos312) {
+            GEOSGeometry coverage = parse_wkt(wkt: "GEOMETRYCOLLECTION ("
+                + "POLYGON ((0 0, 5 0, 5 5, 0 5, 0 0)), "
+                + "POLYGON ((5 0, 10 0, 10 5, 5 5, 5 0)))");
+            assertTrue(coverage.coverageSimplifyVW(tolerance: 1.0, preserve_boundary: True).isValid(),
+                "named coverageSimplifyVW");
+            assertTrue(coverage.coverageIsValid(gap_width: 0.0).isEmpty(), "named coverageIsValid");
+        }
+        if (m_geos314) {
+            hash<auto> clusters = geos_cluster_dbscan(geometry: collection, eps: 3.0, min_points: 1);
+            assertEq(2, clusters.assignments.size(), "named DBSCAN");
+        }
+
+        assertEq(1, geos_orientation_index(a_x: 0.0, a_y: 0.0, b_x: 10.0, b_y: 0.0,
+            point_x: 5.0, point_y: 5.0), "named orientation");
+        hash<GEOSCoordinate> isect = geos_segment_intersection(a_x: 0.0, a_y: 0.0, b_x: 10.0, b_y: 10.0,
+            c_x: 0.0, c_y: 10.0, d_x: 10.0, d_y: 0.0);
+        assertFloatEq(5.0, isect.x, "named segment intersection x");
+
+        GEOSPreparedGeometry prepared = poly.prepare();
+        assertTrue(prepared.contains(other: pt), "named prepared contains");
+        assertTrue(prepared.distanceWithin(other: pt, distance: 0.0), "named prepared distanceWithin");
+        if (m_geos312) {
+            assertTrue(prepared.containsXY(x: 1.0, y: 2.0), "named prepared containsXY");
+            assertTrue(prepared.intersectsXY(x: 1.0, y: 2.0), "named prepared intersectsXY");
+        }
+        assertGt(0.0, prepared.nearestPoints(other: pt2).size(), "named prepared nearestPoints");
+        if (m_geos314) {
+            assertTrue(exists prepared.relate(other: pt), "named prepared relate");
+            assertTrue(prepared.relatePattern(other: pt, pattern: "T********"), "named prepared relatePattern");
+        }
+
+        GEOSSTRtree tree(node_capacity: 10);
+        tree.insert(geometry: pt, item: "pt");
+        tree.insert(geometry: pt2, item: "pt2");
+        assertEq(2, tree.query(geometry: geos_create_rectangle(xmin: 0.0, ymin: 0.0, xmax: 5.0, ymax: 5.0)).size(),
+            "named STRtree query");
+        assertTrue(exists tree.nearestItem(geometry: parse_wkt(wkt: "POINT (1 2)")), "named STRtree nearest");
     }
 
     miscUtilityTests() {

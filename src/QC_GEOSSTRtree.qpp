@@ -77,19 +77,19 @@ list<auto> results = tree.query(query_env);
 qclass GEOSSTRtree [arg=QoreGEOSSTRtree* t; ns=Qore::GEOS];
 
 //! Creates a new STRtree spatial index
-/** @param nodeCapacity the maximum number of child nodes per internal node (default 10)
+/** @param node_capacity the maximum number of child nodes per internal node (default 10)
 
     @par Example:
     @code{.py}
 GEOSSTRtree tree(10);
     @endcode
 */
-GEOSSTRtree::constructor(int nodeCapacity = 10) {
-    self->setPrivate(CID_GEOSSTRTREE, new QoreGEOSSTRtree(nodeCapacity));
+GEOSSTRtree::constructor(int node_capacity = 10) [flags=NAMED_ARGS] {
+    self->setPrivate(CID_GEOSSTRTREE, new QoreGEOSSTRtree(node_capacity));
 }
 
 //! Inserts a geometry and associated user data into the tree
-/** @param geom the geometry to use for spatial indexing (envelope is used)
+/** @param geometry the geometry to use for spatial indexing (envelope is used)
     @param item the user data to associate with this geometry
 
     @par Example:
@@ -97,15 +97,15 @@ GEOSSTRtree::constructor(int nodeCapacity = 10) {
 tree.insert(geom, {"name": "feature1", "value": 42});
     @endcode
 */
-nothing GEOSSTRtree::insert(GEOSGeometry[QoreGEOSGeometry] geom, auto item) {
+nothing GEOSSTRtree::insert(GEOSGeometry[QoreGEOSGeometry] geometry, auto item) [flags=NAMED_ARGS] {
 
     // get the QoreObject for the geometry argument
     QoreObject* geomObj = args->retrieveEntry(0).get<QoreObject>();
-    t->insert(geomObj, *geom, item);
+    t->insert(geomObj, *geometry, item);
 }
 
 //! Queries the tree for items whose envelope intersects the given geometry's envelope
-/** @param geom the query geometry (its envelope is used for the query)
+/** @param geometry the query geometry (its envelope is used for the query)
     @return a list of user data items whose associated geometries' envelopes
             intersect the query geometry's envelope
 
@@ -113,7 +113,7 @@ nothing GEOSSTRtree::insert(GEOSGeometry[QoreGEOSGeometry] geom, auto item) {
     @throw THREAD-CANCELLED if thread cancellation is requested during query
     @throw PROGRAM-INTERRUPTED if program interrupt is requested during query
 */
-list<auto> GEOSSTRtree::query(GEOSGeometry[QoreGEOSGeometry] geom) {
+list<auto> GEOSSTRtree::query(GEOSGeometry[QoreGEOSGeometry] geometry) [flags=NAMED_ARGS] {
 
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
@@ -124,7 +124,7 @@ list<auto> GEOSSTRtree::query(GEOSGeometry[QoreGEOSGeometry] geom) {
     cbctx.xsink = xsink;
     cbctx.count = 0;
 
-    GEOSSTRtree_query_r(ctx, t->getTree(), geom->getGeometry(), strtree_query_callback, &cbctx);
+    GEOSSTRtree_query_r(ctx, t->getTree(), geometry->getGeometry(), strtree_query_callback, &cbctx);
     if (*xsink) {
         return QoreValue();
     }
@@ -132,12 +132,12 @@ list<auto> GEOSSTRtree::query(GEOSGeometry[QoreGEOSGeometry] geom) {
 }
 
 //! Returns the nearest item to the given geometry
-/** @param geom the query geometry
+/** @param geometry the query geometry
     @return the user data of the nearest item, or @ref nothing if the tree is empty
 
     @throw GEOS-ERROR error in nearest query
 */
-auto GEOSSTRtree::nearestItem(GEOSGeometry[QoreGEOSGeometry] geom) {
+auto GEOSSTRtree::nearestItem(GEOSGeometry[QoreGEOSGeometry] geometry) [flags=NAMED_ARGS] {
 
     if (t->size() == 0) {
         return QoreValue();
@@ -147,8 +147,8 @@ auto GEOSSTRtree::nearestItem(GEOSGeometry[QoreGEOSGeometry] geom) {
 
     // use the first entry as the initial item for the search
     const TreeEntry* nearest = static_cast<const TreeEntry*>(
-        GEOSSTRtree_nearest_generic_r(ctx, t->getTree(), geom->getGeometry(),
-            geom->getGeometry(), strtree_nearest_callback, nullptr));
+        GEOSSTRtree_nearest_generic_r(ctx, t->getTree(), geometry->getGeometry(),
+            geometry->getGeometry(), strtree_nearest_callback, nullptr));
     if (!nearest) {
         check_geos_error(xsink, "GEOS-ERROR", "nearestItem");
         return QoreValue();

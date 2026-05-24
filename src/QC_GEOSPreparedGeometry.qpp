@@ -65,7 +65,7 @@ GEOSPreparedGeometry::constructor() {
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSPreparedGeometry::contains(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSPreparedGeometry::contains(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSPreparedContains_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
@@ -84,7 +84,7 @@ bool GEOSPreparedGeometry::contains(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSPreparedGeometry::containsProperly(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSPreparedGeometry::containsProperly(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSPreparedContainsProperly_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
@@ -103,7 +103,7 @@ bool GEOSPreparedGeometry::containsProperly(GEOSGeometry[QoreGEOSGeometry] other
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSPreparedGeometry::intersects(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSPreparedGeometry::intersects(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSPreparedIntersects_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
@@ -122,7 +122,7 @@ bool GEOSPreparedGeometry::intersects(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSPreparedGeometry::covers(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSPreparedGeometry::covers(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSPreparedCovers_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
@@ -141,7 +141,7 @@ bool GEOSPreparedGeometry::covers(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSPreparedGeometry::coveredBy(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSPreparedGeometry::coveredBy(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSPreparedCoveredBy_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
@@ -161,7 +161,7 @@ bool GEOSPreparedGeometry::coveredBy(GEOSGeometry[QoreGEOSGeometry] other) {
     @throw GEOS-ERROR error in spatial predicate
 
 */
-bool GEOSPreparedGeometry::within(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSPreparedGeometry::within(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSPreparedWithin_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
@@ -181,7 +181,7 @@ bool GEOSPreparedGeometry::within(GEOSGeometry[QoreGEOSGeometry] other) {
     @throw GEOS-ERROR error in spatial predicate
 
 */
-bool GEOSPreparedGeometry::touches(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSPreparedGeometry::touches(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSPreparedTouches_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
@@ -201,7 +201,7 @@ bool GEOSPreparedGeometry::touches(GEOSGeometry[QoreGEOSGeometry] other) {
     @throw GEOS-ERROR error in spatial predicate
 
 */
-bool GEOSPreparedGeometry::crosses(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSPreparedGeometry::crosses(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSPreparedCrosses_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
@@ -221,7 +221,7 @@ bool GEOSPreparedGeometry::crosses(GEOSGeometry[QoreGEOSGeometry] other) {
     @throw GEOS-ERROR error in spatial predicate
 
 */
-bool GEOSPreparedGeometry::overlaps(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSPreparedGeometry::overlaps(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSPreparedOverlaps_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
@@ -241,7 +241,7 @@ bool GEOSPreparedGeometry::overlaps(GEOSGeometry[QoreGEOSGeometry] other) {
     @throw GEOS-ERROR error in spatial predicate
 
 */
-bool GEOSPreparedGeometry::disjoint(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSPreparedGeometry::disjoint(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSPreparedDisjoint_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
@@ -261,7 +261,7 @@ bool GEOSPreparedGeometry::disjoint(GEOSGeometry[QoreGEOSGeometry] other) {
     @throw GEOS-ERROR error computing distance
 
 */
-float GEOSPreparedGeometry::distance(GEOSGeometry[QoreGEOSGeometry] other) {
+float GEOSPreparedGeometry::distance(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     double dist;
@@ -276,16 +276,16 @@ float GEOSPreparedGeometry::distance(GEOSGeometry[QoreGEOSGeometry] other) {
 
 //! Tests whether the distance between the prepared geometry and another is within a given value
 /** @param other the geometry to test
-    @param dist the distance threshold
+    @param distance the distance threshold
     @return @ref True if the distance is within the threshold
 
     @throw GEOS-ERROR error in distance computation
 
 */
-bool GEOSPreparedGeometry::distanceWithin(GEOSGeometry[QoreGEOSGeometry] other, float dist) {
+bool GEOSPreparedGeometry::distanceWithin(GEOSGeometry[QoreGEOSGeometry] other, float distance) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    char rv = GEOSPreparedDistanceWithin_r(ctx, pg->getPreparedGeometry(), other->getGeometry(), dist);
+    char rv = GEOSPreparedDistanceWithin_r(ctx, pg->getPreparedGeometry(), other->getGeometry(), distance);
     if (rv == 2) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "prepared distanceWithin")) {
             xsink->raiseException("GEOS-ERROR", "error in prepared distanceWithin");
@@ -303,7 +303,7 @@ bool GEOSPreparedGeometry::distanceWithin(GEOSGeometry[QoreGEOSGeometry] other, 
     @throw GEOS-ERROR error in spatial predicate
 
 */
-bool GEOSPreparedGeometry::containsXY(float x, float y) {
+bool GEOSPreparedGeometry::containsXY(float x, float y) [flags=NAMED_ARGS] {
 #if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
@@ -329,7 +329,7 @@ bool GEOSPreparedGeometry::containsXY(float x, float y) {
     @throw GEOS-ERROR error in spatial predicate
 
 */
-bool GEOSPreparedGeometry::intersectsXY(float x, float y) {
+bool GEOSPreparedGeometry::intersectsXY(float x, float y) [flags=NAMED_ARGS] {
 #if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
@@ -354,7 +354,7 @@ bool GEOSPreparedGeometry::intersectsXY(float x, float y) {
     @throw GEOS-ERROR error computing nearest points
 
 */
-list<hash<GEOSCoordinate>> GEOSPreparedGeometry::nearestPoints(GEOSGeometry[QoreGEOSGeometry] other) {
+list<hash<GEOSCoordinate>> GEOSPreparedGeometry::nearestPoints(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSCoordSequence* cs = GEOSPreparedNearestPoints_r(ctx, pg->getPreparedGeometry(), other->getGeometry());
@@ -396,7 +396,7 @@ list<hash<GEOSCoordinate>> GEOSPreparedGeometry::nearestPoints(GEOSGeometry[Qore
     @throw GEOS-ERROR error computing relate matrix
 
 */
-string GEOSPreparedGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) {
+string GEOSPreparedGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
 #if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 14)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
@@ -424,7 +424,7 @@ string GEOSPreparedGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) {
     @throw GEOS-ERROR error testing relate pattern
 
 */
-bool GEOSPreparedGeometry::relatePattern(GEOSGeometry[QoreGEOSGeometry] other, string pattern) {
+bool GEOSPreparedGeometry::relatePattern(GEOSGeometry[QoreGEOSGeometry] other, string pattern) [flags=NAMED_ARGS] {
 #if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 14)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();

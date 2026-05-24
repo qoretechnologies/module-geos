@@ -205,7 +205,7 @@ GEOSGeometry geom = parse_wkt("POINT (1.0 2.0)");
     @throw GEOS-ERROR error parsing WKT string
 
 */
-GEOSGeometry parse_wkt(string wkt) {
+GEOSGeometry parse_wkt(string wkt) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSWKTReader* reader = GEOSWKTReader_create_r(ctx);
@@ -225,7 +225,7 @@ GEOSGeometry parse_wkt(string wkt) {
 }
 
 //! Convenience function to serialize a GEOSGeometry to a WKT string
-/** @param geom the geometry to serialize
+/** @param geometry the geometry to serialize
     @return the WKT string
 
     @par Example:
@@ -236,7 +236,7 @@ string wkt = make_wkt(geom);
     @throw GEOS-ERROR error writing WKT
 
 */
-string make_wkt(GEOSGeometry[QoreGEOSGeometry] geom) {
+string make_wkt(GEOSGeometry[QoreGEOSGeometry] geometry) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSWKTWriter* writer = GEOSWKTWriter_create_r(ctx);
@@ -245,7 +245,7 @@ string make_wkt(GEOSGeometry[QoreGEOSGeometry] geom) {
         return QoreValue();
     }
     GEOSWKTWriter_setTrim_r(ctx, writer, 1);
-    char* wkt = GEOSWKTWriter_write_r(ctx, writer, geom->getGeometry());
+    char* wkt = GEOSWKTWriter_write_r(ctx, writer, geometry->getGeometry());
     GEOSWKTWriter_destroy_r(ctx, writer);
     if (!wkt) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "make_wkt")) {
@@ -270,7 +270,7 @@ GEOSGeometry geom = parse_wkb(wkb_data);
     @throw GEOS-ERROR error parsing WKB data
 
 */
-GEOSGeometry parse_wkb(binary wkb) {
+GEOSGeometry parse_wkb(binary wkb) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSWKBReader* reader = GEOSWKBReader_create_r(ctx);
@@ -291,7 +291,7 @@ GEOSGeometry parse_wkb(binary wkb) {
 }
 
 //! Convenience function to serialize a GEOSGeometry to WKB binary data
-/** @param geom the geometry to serialize
+/** @param geometry the geometry to serialize
     @return the WKB binary data
 
     @par Example:
@@ -302,7 +302,7 @@ binary wkb = make_wkb(geom);
     @throw GEOS-ERROR error writing WKB
 
 */
-binary make_wkb(GEOSGeometry[QoreGEOSGeometry] geom) {
+binary make_wkb(GEOSGeometry[QoreGEOSGeometry] geometry) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSWKBWriter* writer = GEOSWKBWriter_create_r(ctx);
@@ -311,7 +311,7 @@ binary make_wkb(GEOSGeometry[QoreGEOSGeometry] geom) {
         return QoreValue();
     }
     size_t size;
-    unsigned char* wkb = GEOSWKBWriter_write_r(ctx, writer, geom->getGeometry(), &size);
+    unsigned char* wkb = GEOSWKBWriter_write_r(ctx, writer, geometry->getGeometry(), &size);
     GEOSWKBWriter_destroy_r(ctx, writer);
     if (!wkb) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "make_wkb")) {
@@ -338,7 +338,7 @@ GEOSGeometry pt = geos_create_point(1.0, 2.0);
     @throw GEOS-ERROR error creating point
 
 */
-GEOSGeometry geos_create_point(float x, float y) {
+GEOSGeometry geos_create_point(float x, float y) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* geom = GEOSGeom_createPointFromXY_r(ctx, x, y);
@@ -365,7 +365,7 @@ GEOSGeometry pt3d = geos_create_point(1.0, 2.0, 3.0);
     @throw GEOS-ERROR error creating point
 
 */
-GEOSGeometry geos_create_point(float x, float y, float z) {
+GEOSGeometry geos_create_point(float x, float y, float z) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSCoordSequence* cs = GEOSCoordSeq_create_r(ctx, 1, 3);
@@ -385,7 +385,7 @@ GEOSGeometry geos_create_point(float x, float y, float z) {
 }
 
 //! Creates a LineString geometry from a list of coordinates
-/** @param coords a list of hashes with \c "x", \c "y", and optional \c "z" keys (at least 2 coordinates required)
+/** @param coordinates a list of hashes with \c "x", \c "y", and optional \c "z" keys (at least 2 coordinates required)
     @return a new GEOSGeometry linestring
 
     @par Example:
@@ -400,10 +400,10 @@ GEOSGeometry line = geos_create_linestring((
     @throw GEOS-ERROR error creating linestring or fewer than 2 coordinates
 
 */
-GEOSGeometry geos_create_linestring(list coords) {
+GEOSGeometry geos_create_linestring(list coordinates) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    GEOSCoordSequence* cs = qore_list_to_coordseq(ctx, coords, xsink);
+    GEOSCoordSequence* cs = qore_list_to_coordseq(ctx, coordinates, xsink);
     if (!cs) {
         return QoreValue();
     }
@@ -443,7 +443,7 @@ GEOSGeometry poly_with_hole = geos_create_polygon(ring, (hole,));
     @throw GEOS-ERROR error creating polygon or invalid ring
 
 */
-GEOSGeometry geos_create_polygon(list exterior, *list holes) {
+GEOSGeometry geos_create_polygon(list exterior, *list holes) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
 
@@ -514,8 +514,8 @@ GEOSGeometry geos_create_polygon(list exterior, *list holes) {
 }
 
 //! Creates a geometry collection from a list of geometries
-/** @param geoms a list of GEOSGeometry objects
-    @param type the collection type ID (e.g., @ref GEOS_MULTIPOINT, @ref GEOS_MULTILINESTRING,
+/** @param geometries a list of GEOSGeometry objects
+    @param geometry_type the collection type ID (e.g., @ref GEOS_MULTIPOINT, @ref GEOS_MULTILINESTRING,
            @ref GEOS_MULTIPOLYGON, @ref GEOS_GEOMETRYCOLLECTION)
     @return a new GEOSGeometry collection
 
@@ -529,11 +529,11 @@ GEOSGeometry mp = geos_create_collection(
     @throw GEOS-ERROR error creating collection or invalid type
 
 */
-GEOSGeometry geos_create_collection(list geoms, int type) {
+GEOSGeometry geos_create_collection(list geometries, int geometry_type) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
 
-    size_t ngeoms = geoms->size();
+    size_t ngeoms = geometries->size();
     // clone each geometry since GEOSGeom_createCollection_r takes ownership
     GEOSGeometry** geos_geoms = new GEOSGeometry*[ngeoms];
     for (size_t i = 0; i < ngeoms; ++i) {
@@ -544,7 +544,7 @@ GEOSGeometry geos_create_collection(list geoms, int type) {
             delete[] geos_geoms;
             return QoreValue();
         }
-        QoreObject* obj = geoms->retrieveEntry(i).get<QoreObject>();
+        QoreObject* obj = geometries->retrieveEntry(i).get<QoreObject>();
         QoreGEOSGeometry* qg = static_cast<QoreGEOSGeometry*>(
             obj->getReferencedPrivateData(CID_GEOSGEOMETRY, xsink));
         if (!qg) {
@@ -569,7 +569,7 @@ GEOSGeometry geos_create_collection(list geoms, int type) {
         }
     }
 
-    GEOSGeometry* geom = GEOSGeom_createCollection_r(ctx, type, geos_geoms, ngeoms);
+    GEOSGeometry* geom = GEOSGeom_createCollection_r(ctx, geometry_type, geos_geoms, ngeoms);
     delete[] geos_geoms;
     if (!geom) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "geos_create_collection")) {
@@ -581,7 +581,7 @@ GEOSGeometry geos_create_collection(list geoms, int type) {
 }
 
 //! Creates an empty geometry collection of the given type
-/** @param type the collection type ID (e.g., @ref GEOS_MULTIPOINT, @ref GEOS_GEOMETRYCOLLECTION)
+/** @param geometry_type the collection type ID (e.g., @ref GEOS_MULTIPOINT, @ref GEOS_GEOMETRYCOLLECTION)
     @return a new empty GEOSGeometry collection
 
     @par Example:
@@ -593,10 +593,10 @@ assertTrue(empty.isEmpty());
     @throw GEOS-ERROR error creating empty collection
 
 */
-GEOSGeometry geos_create_empty_collection(int type) {
+GEOSGeometry geos_create_empty_collection(int geometry_type) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    GEOSGeometry* geom = GEOSGeom_createEmptyCollection_r(ctx, type);
+    GEOSGeometry* geom = GEOSGeom_createEmptyCollection_r(ctx, geometry_type);
     if (!geom) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "geos_create_empty_collection")) {
             xsink->raiseException("GEOS-ERROR", "failed to create empty collection");
@@ -620,7 +620,7 @@ bool is_within = geos_relate_pattern_match(matrix, "T*F**F***");
     @throw GEOS-ERROR error matching pattern
 
 */
-bool geos_relate_pattern_match(string matrix, string pattern) {
+bool geos_relate_pattern_match(string matrix, string pattern) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSRelatePatternMatch_r(ctx, matrix->c_str(), pattern->c_str());
@@ -645,7 +645,7 @@ GEOSGeometry geom = parse_geojson('{"type": "Point", "coordinates": [1.0, 2.0]}'
     @throw GEOS-ERROR error parsing GeoJSON string
 
 */
-GEOSGeometry parse_geojson(string geojson) {
+GEOSGeometry parse_geojson(string geojson) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeoJSONReader* reader = GEOSGeoJSONReader_create_r(ctx);
@@ -665,7 +665,7 @@ GEOSGeometry parse_geojson(string geojson) {
 }
 
 //! Convenience function to serialize a GEOSGeometry to a GeoJSON string
-/** @param geom the geometry to serialize
+/** @param geometry the geometry to serialize
     @param indent the number of spaces for indentation (-1 for compact output, default)
     @return the GeoJSON string
 
@@ -678,7 +678,7 @@ string pretty = make_geojson(geom, 2);
     @throw GEOS-ERROR error writing GeoJSON
 
 */
-string make_geojson(GEOSGeometry[QoreGEOSGeometry] geom, int indent = -1) {
+string make_geojson(GEOSGeometry[QoreGEOSGeometry] geometry, int indent = -1) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeoJSONWriter* writer = GEOSGeoJSONWriter_create_r(ctx);
@@ -686,7 +686,7 @@ string make_geojson(GEOSGeometry[QoreGEOSGeometry] geom, int indent = -1) {
         xsink->raiseException("GEOS-ERROR", "failed to create GeoJSON writer");
         return QoreValue();
     }
-    char* json = GEOSGeoJSONWriter_writeGeometry_r(ctx, writer, geom->getGeometry(), indent);
+    char* json = GEOSGeoJSONWriter_writeGeometry_r(ctx, writer, geometry->getGeometry(), indent);
     GEOSGeoJSONWriter_destroy_r(ctx, writer);
     if (!json) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "make_geojson")) {
@@ -715,7 +715,7 @@ assertEq(200.0, rect.area());
     @throw GEOS-ERROR error creating rectangle
 
 */
-GEOSGeometry geos_create_rectangle(float xmin, float ymin, float xmax, float ymax) {
+GEOSGeometry geos_create_rectangle(float xmin, float ymin, float xmax, float ymax) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* geom = GEOSGeom_createRectangle_r(ctx, xmin, ymin, xmax, ymax);
@@ -733,7 +733,7 @@ GEOSGeometry geos_create_rectangle(float xmin, float ymin, float xmax, float yma
     and attempts to polygonize them, creating polygons from the closed rings formed
     by the input lines.
 
-    @param geoms a list of GEOSGeometry objects representing linework
+    @param geometries a list of GEOSGeometry objects representing linework
 
     @return a new GEOSGeometry collection of polygons formed from the input linework
 
@@ -753,11 +753,11 @@ printf("num polygons: %d\n", polys.numGeometries());
 
     @since geos 1.2
 */
-GEOSGeometry geos_polygonize(list geoms) {
+GEOSGeometry geos_polygonize(list geometries) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
 
-    size_t ngeoms = geoms->size();
+    size_t ngeoms = geometries->size();
     GEOSGeometry** geos_geoms = new GEOSGeometry*[ngeoms];
     for (size_t i = 0; i < ngeoms; ++i) {
         if (!(i % 100) && qore_check_cancel(xsink)) {
@@ -767,7 +767,7 @@ GEOSGeometry geos_polygonize(list geoms) {
             delete[] geos_geoms;
             return QoreValue();
         }
-        QoreObject* obj = geoms->retrieveEntry(i).get<QoreObject>();
+        QoreObject* obj = geometries->retrieveEntry(i).get<QoreObject>();
         QoreGEOSGeometry* qg = static_cast<QoreGEOSGeometry*>(
             obj->getReferencedPrivateData(CID_GEOSGEOMETRY, xsink));
         if (!qg) {
@@ -812,9 +812,9 @@ GEOSGeometry geos_polygonize(list geoms) {
 /** Takes a geometry collection and clusters the component geometries using the
     DBSCAN algorithm with the given distance threshold and minimum points.
 
-    @param geom the geometry collection to cluster
+    @param geometry the geometry collection to cluster
     @param eps the distance threshold for clustering
-    @param minPoints the minimum number of points to form a cluster
+    @param min_points the minimum number of points to form a cluster
 
     @return a hash with keys:
     - \c numClusters (int): the number of clusters found
@@ -832,11 +832,11 @@ printf("assignments: %y\n", result.assignments);
 
     @since geos 1.3
 */
-hash<auto> geos_cluster_dbscan(GEOSGeometry[QoreGEOSGeometry] geom, float eps, int minPoints) {
+hash<auto> geos_cluster_dbscan(GEOSGeometry[QoreGEOSGeometry] geometry, float eps, int min_points) [flags=NAMED_ARGS] {
 #if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 14)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    GEOSClusterInfo* info = GEOSClusterDBSCAN_r(ctx, geom->getGeometry(), eps, minPoints);
+    GEOSClusterInfo* info = GEOSClusterDBSCAN_r(ctx, geometry->getGeometry(), eps, min_points);
     if (!info) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "geos_cluster_dbscan")) {
             xsink->raiseException("GEOS-ERROR", "error in DBSCAN clustering");
@@ -844,7 +844,7 @@ hash<auto> geos_cluster_dbscan(GEOSGeometry[QoreGEOSGeometry] geom, float eps, i
         return QoreValue();
     }
     size_t numClusters = GEOSClusterInfo_getNumClusters_r(ctx, info);
-    int numGeoms = GEOSGetNumGeometries_r(ctx, geom->getGeometry());
+    int numGeoms = GEOSGetNumGeometries_r(ctx, geometry->getGeometry());
 
     size_t* assignments = GEOSClusterInfo_getClustersForInputs_r(ctx, info);
 
@@ -879,12 +879,12 @@ hash<auto> geos_cluster_dbscan(GEOSGeometry[QoreGEOSGeometry] geom, float eps, i
 /** Returns whether point P lies to the left of, to the right of, or on the
     directed line from A to B.
 
-    @param ax the X coordinate of point A
-    @param ay the Y coordinate of point A
-    @param bx the X coordinate of point B
-    @param by the Y coordinate of point B
-    @param px the X coordinate of point P
-    @param py the Y coordinate of point P
+    @param a_x the X coordinate of point A
+    @param a_y the Y coordinate of point A
+    @param b_x the X coordinate of point B
+    @param b_y the Y coordinate of point B
+    @param point_x the X coordinate of point P
+    @param point_y the Y coordinate of point P
 
     @return -1 if P is to the right of A-B, 0 if collinear, 1 if to the left
 
@@ -896,23 +896,23 @@ int oi = geos_orientation_index(0.0, 0.0, 10.0, 0.0, 5.0, 5.0);
 
     @since geos 1.3
 */
-int geos_orientation_index(float ax, float ay, float bx, float by, float px, float py) [flags=CONSTANT] {
+int geos_orientation_index(float a_x, float a_y, float b_x, float b_y, float point_x, float point_y) [flags=CONSTANT,NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
-    return GEOSOrientationIndex_r(ctx, ax, ay, bx, by, px, py);
+    return GEOSOrientationIndex_r(ctx, a_x, a_y, b_x, b_y, point_x, point_y);
 }
 
 //! Computes the intersection point of two line segments
-/** Computes the intersection point of the line segment from (ax, ay) to (bx, by)
-    and the line segment from (cx, cy) to (dx, dy).
+/** Computes the intersection point of the line segment from (a_x, a_y) to (b_x, b_y)
+    and the line segment from (c_x, c_y) to (d_x, d_y).
 
-    @param ax the X coordinate of the first endpoint of segment 1
-    @param ay the Y coordinate of the first endpoint of segment 1
-    @param bx the X coordinate of the second endpoint of segment 1
-    @param by the Y coordinate of the second endpoint of segment 1
-    @param cx the X coordinate of the first endpoint of segment 2
-    @param cy the Y coordinate of the first endpoint of segment 2
-    @param dx the X coordinate of the second endpoint of segment 2
-    @param dy the Y coordinate of the second endpoint of segment 2
+    @param a_x the X coordinate of the first endpoint of segment 1
+    @param a_y the Y coordinate of the first endpoint of segment 1
+    @param b_x the X coordinate of the second endpoint of segment 1
+    @param b_y the Y coordinate of the second endpoint of segment 1
+    @param c_x the X coordinate of the first endpoint of segment 2
+    @param c_y the Y coordinate of the first endpoint of segment 2
+    @param d_x the X coordinate of the second endpoint of segment 2
+    @param d_y the Y coordinate of the second endpoint of segment 2
 
     @return a @ref GEOSCoordinate hash with the intersection point
 
@@ -926,11 +926,11 @@ hash<GEOSCoordinate> pt = geos_segment_intersection(0, 0, 10, 10, 0, 10, 10, 0);
 
     @since geos 1.3
 */
-hash<GEOSCoordinate> geos_segment_intersection(float ax, float ay, float bx, float by, float cx, float cy, float dx, float dy) {
+hash<GEOSCoordinate> geos_segment_intersection(float a_x, float a_y, float b_x, float b_y, float c_x, float c_y, float d_x, float d_y) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     double rx, ry;
-    int rv = GEOSSegmentIntersection_r(ctx, ax, ay, bx, by, cx, cy, dx, dy, &rx, &ry);
+    int rv = GEOSSegmentIntersection_r(ctx, a_x, a_y, b_x, b_y, c_x, c_y, d_x, d_y, &rx, &ry);
     if (rv == 0) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "geos_segment_intersection")) {
             xsink->raiseException("GEOS-ERROR", "no intersection or error computing segment intersection");
