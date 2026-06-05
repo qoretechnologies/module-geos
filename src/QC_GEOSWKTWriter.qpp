@@ -48,15 +48,15 @@ GEOSWKTWriter::constructor() {
 }
 
 //! Writes a geometry to a WKT string
-/** @param geom the geometry to serialize
+/** @param geometry the geometry to serialize
     @return the WKT string
 
     @throw GEOS-ERROR error writing WKT
 */
-string GEOSWKTWriter::write(GEOSGeometry[QoreGEOSGeometry] geom) {
+string GEOSWKTWriter::write(GEOSGeometry[QoreGEOSGeometry] geometry) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    char* wkt = GEOSWKTWriter_write_r(ctx, w->getWriter(), geom->getGeometry());
+    char* wkt = GEOSWKTWriter_write_r(ctx, w->getWriter(), geometry->getGeometry());
     if (!wkt) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "WKTWriter::write")) {
             xsink->raiseException("GEOS-ERROR", "error writing WKT");
@@ -69,22 +69,22 @@ string GEOSWKTWriter::write(GEOSGeometry[QoreGEOSGeometry] geom) {
 }
 
 //! Sets whether to trim unnecessary trailing zeros
-/** @param trim @ref True to trim trailing zeros
+/** @param enabled @ref True to trim trailing zeros
 */
-nothing GEOSWKTWriter::setTrim(bool trim) {
-    GEOSWKTWriter_setTrim_r(geos_get_context(), w->getWriter(), trim ? 1 : 0);
+nothing GEOSWKTWriter::setTrim(bool enabled) [flags=NAMED_ARGS] {
+    GEOSWKTWriter_setTrim_r(geos_get_context(), w->getWriter(), enabled ? 1 : 0);
 }
 
 //! Sets the rounding precision for coordinates
 /** @param precision the number of decimal places
 */
-nothing GEOSWKTWriter::setRoundingPrecision(int precision) {
+nothing GEOSWKTWriter::setRoundingPrecision(int precision) [flags=NAMED_ARGS] {
     GEOSWKTWriter_setRoundingPrecision_r(geos_get_context(), w->getWriter(), precision);
 }
 
 //! Sets the output dimension (2 or 3)
-/** @param dim the output dimension
+/** @param dimension the output dimension
 */
-nothing GEOSWKTWriter::setOutputDimension(int dim) {
-    GEOSWKTWriter_setOutputDimension_r(geos_get_context(), w->getWriter(), dim);
+nothing GEOSWKTWriter::setOutputDimension(int dimension) [flags=NAMED_ARGS] {
+    GEOSWKTWriter_setOutputDimension_r(geos_get_context(), w->getWriter(), dimension);
 }

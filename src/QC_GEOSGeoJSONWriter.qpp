@@ -49,16 +49,16 @@ GEOSGeoJSONWriter::constructor() {
 }
 
 //! Writes a geometry to a GeoJSON string
-/** @param geom the geometry to serialize
+/** @param geometry the geometry to serialize
     @param indent the number of spaces for indentation (-1 for compact output)
     @return the GeoJSON string
 
     @throw GEOS-ERROR error writing GeoJSON
 */
-string GEOSGeoJSONWriter::write(GEOSGeometry[QoreGEOSGeometry] geom, int indent = -1) {
+string GEOSGeoJSONWriter::write(GEOSGeometry[QoreGEOSGeometry] geometry, int indent = -1) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    char* json = GEOSGeoJSONWriter_writeGeometry_r(ctx, w->getWriter(), geom->getGeometry(), indent);
+    char* json = GEOSGeoJSONWriter_writeGeometry_r(ctx, w->getWriter(), geometry->getGeometry(), indent);
     if (!json) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "GeoJSONWriter::write")) {
             xsink->raiseException("GEOS-ERROR", "error writing GeoJSON");
@@ -71,11 +71,11 @@ string GEOSGeoJSONWriter::write(GEOSGeometry[QoreGEOSGeometry] geom, int indent 
 }
 
 //! Sets the output dimension (2 or 3)
-/** @param dim the output dimension (2 for 2D, 3 for 3D)
+/** @param dimension the output dimension (2 for 2D, 3 for 3D)
 */
-nothing GEOSGeoJSONWriter::setOutputDimension(int dim) {
+nothing GEOSGeoJSONWriter::setOutputDimension(int dimension) [flags=NAMED_ARGS] {
 #if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 14)
-    GEOSGeoJSONWriter_setOutputDimension_r(geos_get_context(), w->getWriter(), dim);
+    GEOSGeoJSONWriter_setOutputDimension_r(geos_get_context(), w->getWriter(), dimension);
 #else
     xsink->raiseException("GEOS-ERROR", "setOutputDimension() requires GEOS >= 3.14 (installed: " GEOS_VERSION ")");
 #endif

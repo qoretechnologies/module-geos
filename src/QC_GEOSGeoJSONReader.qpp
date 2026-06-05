@@ -54,7 +54,7 @@ GEOSGeoJSONReader::constructor() {
 
     @throw GEOS-ERROR error parsing GeoJSON string
 */
-GEOSGeometry GEOSGeoJSONReader::read(string geojson) {
+GEOSGeometry GEOSGeoJSONReader::read(string geojson) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* geom = GEOSGeoJSONReader_readGeometry_r(ctx, r->getReader(), geojson->c_str());

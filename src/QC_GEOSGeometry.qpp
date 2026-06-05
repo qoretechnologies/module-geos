@@ -96,7 +96,7 @@ GEOSGeometry geom = new GEOSGeometry("POINT (1.0 2.0)");
 
     @throw GEOS-ERROR error parsing WKT string
 */
-GEOSGeometry::constructor(string wkt) {
+GEOSGeometry::constructor(string wkt) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSWKTReader* reader = GEOSWKTReader_create_r(ctx);
@@ -125,7 +125,7 @@ GEOSGeometry geom = new GEOSGeometry(wkb_data);
 
     @throw GEOS-ERROR error parsing WKB data
 */
-GEOSGeometry::constructor(binary wkb) {
+GEOSGeometry::constructor(binary wkb) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSWKBReader* reader = GEOSWKBReader_create_r(ctx);
@@ -177,7 +177,7 @@ bool result = poly.contains(point);
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSGeometry::contains(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSGeometry::contains(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSContains_r(ctx, g->getGeometry(), other->getGeometry());
@@ -196,7 +196,7 @@ bool GEOSGeometry::contains(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSGeometry::intersects(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSGeometry::intersects(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSIntersects_r(ctx, g->getGeometry(), other->getGeometry());
@@ -215,7 +215,7 @@ bool GEOSGeometry::intersects(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSGeometry::within(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSGeometry::within(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSWithin_r(ctx, g->getGeometry(), other->getGeometry());
@@ -234,7 +234,7 @@ bool GEOSGeometry::within(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSGeometry::crosses(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSGeometry::crosses(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSCrosses_r(ctx, g->getGeometry(), other->getGeometry());
@@ -253,7 +253,7 @@ bool GEOSGeometry::crosses(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSGeometry::touches(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSGeometry::touches(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSTouches_r(ctx, g->getGeometry(), other->getGeometry());
@@ -272,7 +272,7 @@ bool GEOSGeometry::touches(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSGeometry::overlaps(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSGeometry::overlaps(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSOverlaps_r(ctx, g->getGeometry(), other->getGeometry());
@@ -291,7 +291,7 @@ bool GEOSGeometry::overlaps(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSGeometry::disjoint(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSGeometry::disjoint(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSDisjoint_r(ctx, g->getGeometry(), other->getGeometry());
@@ -310,7 +310,7 @@ bool GEOSGeometry::disjoint(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSGeometry::covers(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSGeometry::covers(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSCovers_r(ctx, g->getGeometry(), other->getGeometry());
@@ -329,7 +329,7 @@ bool GEOSGeometry::covers(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSGeometry::coveredBy(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSGeometry::coveredBy(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSCoveredBy_r(ctx, g->getGeometry(), other->getGeometry());
@@ -348,7 +348,7 @@ bool GEOSGeometry::coveredBy(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in spatial predicate
 */
-bool GEOSGeometry::equals(GEOSGeometry[QoreGEOSGeometry] other) {
+bool GEOSGeometry::equals(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSEquals_r(ctx, g->getGeometry(), other->getGeometry());
@@ -372,7 +372,7 @@ float d = geom1.distance(geom2);
 
     @throw GEOS-ERROR error computing distance
 */
-float GEOSGeometry::distance(GEOSGeometry[QoreGEOSGeometry] other) {
+float GEOSGeometry::distance(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     double dist;
@@ -394,7 +394,7 @@ float GEOSGeometry::distance(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error in projection or wrong geometry type
 */
-float GEOSGeometry::project(GEOSGeometry[QoreGEOSGeometry] point) {
+float GEOSGeometry::project(GEOSGeometry[QoreGEOSGeometry] point) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     double d = GEOSProject_r(ctx, g->getGeometry(), point->getGeometry());
@@ -416,7 +416,7 @@ float GEOSGeometry::project(GEOSGeometry[QoreGEOSGeometry] point) {
 
     @throw GEOS-ERROR error in projection or wrong geometry type
 */
-float GEOSGeometry::projectNormalized(GEOSGeometry[QoreGEOSGeometry] point) {
+float GEOSGeometry::projectNormalized(GEOSGeometry[QoreGEOSGeometry] point) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     double d = GEOSProjectNormalized_r(ctx, g->getGeometry(), point->getGeometry());
@@ -435,7 +435,7 @@ float GEOSGeometry::projectNormalized(GEOSGeometry[QoreGEOSGeometry] point) {
 
     @throw GEOS-ERROR error in interpolation or wrong geometry type
 */
-GEOSGeometry GEOSGeometry::interpolate(float distance) {
+GEOSGeometry GEOSGeometry::interpolate(float distance) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSInterpolate_r(ctx, g->getGeometry(), distance);
@@ -454,7 +454,7 @@ GEOSGeometry GEOSGeometry::interpolate(float distance) {
 
     @throw GEOS-ERROR error in interpolation or wrong geometry type
 */
-GEOSGeometry GEOSGeometry::interpolateNormalized(float fraction) {
+GEOSGeometry GEOSGeometry::interpolateNormalized(float fraction) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSInterpolateNormalized_r(ctx, g->getGeometry(), fraction);
@@ -473,7 +473,7 @@ GEOSGeometry GEOSGeometry::interpolateNormalized(float fraction) {
 
     @throw GEOS-ERROR error computing nearest points
 */
-list<hash<GEOSCoordinate>> GEOSGeometry::nearestPoints(GEOSGeometry[QoreGEOSGeometry] other) {
+list<hash<GEOSCoordinate>> GEOSGeometry::nearestPoints(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSCoordSequence* cs = GEOSNearestPoints_r(ctx, g->getGeometry(), other->getGeometry());
@@ -510,15 +510,15 @@ list<hash<GEOSCoordinate>> GEOSGeometry::nearestPoints(GEOSGeometry[QoreGEOSGeom
 
 //! Computes a buffer area around this geometry
 /** @param width the buffer distance (positive or negative)
-    @param quadsegs the number of segments to approximate a quarter circle (default 8)
+    @param quad_segments the number of segments to approximate a quarter circle (default 8)
     @return a new GEOSGeometry representing the buffer
 
     @throw GEOS-ERROR error computing buffer
 */
-GEOSGeometry GEOSGeometry::buffer(float width, int quadsegs = 8) {
+GEOSGeometry GEOSGeometry::buffer(float width, int quad_segments = 8) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    GEOSGeometry* result = GEOSBuffer_r(ctx, g->getGeometry(), width, quadsegs);
+    GEOSGeometry* result = GEOSBuffer_r(ctx, g->getGeometry(), width, quad_segments);
     if (!result) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "buffer")) {
             xsink->raiseException("GEOS-ERROR", "error computing buffer");
@@ -534,7 +534,7 @@ GEOSGeometry GEOSGeometry::buffer(float width, int quadsegs = 8) {
 
     @throw GEOS-ERROR error computing intersection
 */
-GEOSGeometry GEOSGeometry::intersection(GEOSGeometry[QoreGEOSGeometry] other) {
+GEOSGeometry GEOSGeometry::intersection(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSIntersection_r(ctx, g->getGeometry(), other->getGeometry());
@@ -555,7 +555,7 @@ GEOSGeometry GEOSGeometry::intersection(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error computing union
 */
-GEOSGeometry GEOSGeometry::geomUnion(GEOSGeometry[QoreGEOSGeometry] other) {
+GEOSGeometry GEOSGeometry::geomUnion(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSUnion_r(ctx, g->getGeometry(), other->getGeometry());
@@ -574,7 +574,7 @@ GEOSGeometry GEOSGeometry::geomUnion(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error computing difference
 */
-GEOSGeometry GEOSGeometry::difference(GEOSGeometry[QoreGEOSGeometry] other) {
+GEOSGeometry GEOSGeometry::difference(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSDifference_r(ctx, g->getGeometry(), other->getGeometry());
@@ -593,7 +593,7 @@ GEOSGeometry GEOSGeometry::difference(GEOSGeometry[QoreGEOSGeometry] other) {
 
     @throw GEOS-ERROR error computing symmetric difference
 */
-GEOSGeometry GEOSGeometry::symDifference(GEOSGeometry[QoreGEOSGeometry] other) {
+GEOSGeometry GEOSGeometry::symDifference(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSSymDifference_r(ctx, g->getGeometry(), other->getGeometry());
@@ -779,7 +779,7 @@ int GEOSGeometry::getSRID() [flags=RET_VALUE_ONLY] {
 //! Sets the SRID (Spatial Reference System Identifier) of this geometry
 /** @param srid the SRID to set
 */
-nothing GEOSGeometry::setSRID(int srid) {
+nothing GEOSGeometry::setSRID(int srid) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     GEOSSetSRID_r(ctx, g->getGeometry(), srid);
 }
@@ -859,23 +859,23 @@ list<hash<GEOSCoordinate>> GEOSGeometry::getCoordinates() {
 //! Returns the Nth sub-geometry from a geometry collection
 /** The returned geometry is a clone (not a borrowed reference).
 
-    @param n the zero-based index of the sub-geometry
+    @param index the zero-based index of the sub-geometry
     @return a new GEOSGeometry object
 
     @throw GEOS-ERROR index out of range or error getting sub-geometry
 */
-GEOSGeometry GEOSGeometry::getGeometryN(int n) {
+GEOSGeometry GEOSGeometry::getGeometryN(int index) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     int num = GEOSGetNumGeometries_r(ctx, g->getGeometry());
-    if (n < 0 || n >= num) {
-        xsink->raiseException("GEOS-ERROR", "geometry index %d out of range (0..%d)", (int)n, num - 1);
+    if (index < 0 || index >= num) {
+        xsink->raiseException("GEOS-ERROR", "geometry index %d out of range (0..%d)", (int)index, num - 1);
         return QoreValue();
     }
-    const GEOSGeometry* sub = GEOSGetGeometryN_r(ctx, g->getGeometry(), n);
+    const GEOSGeometry* sub = GEOSGetGeometryN_r(ctx, g->getGeometry(), index);
     if (!sub) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "getGeometryN")) {
-            xsink->raiseException("GEOS-ERROR", "error getting sub-geometry at index %d", (int)n);
+            xsink->raiseException("GEOS-ERROR", "error getting sub-geometry at index %d", (int)index);
         }
         return QoreValue();
     }
@@ -1298,7 +1298,7 @@ printf("exact equal: %y\n", g1.equalsExact(g2, 0.01)); # True
     @throw GEOS-ERROR error comparing geometries
 
 */
-bool GEOSGeometry::equalsExact(GEOSGeometry[QoreGEOSGeometry] other, float tolerance = 0.0) {
+bool GEOSGeometry::equalsExact(GEOSGeometry[QoreGEOSGeometry] other, float tolerance = 0.0) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSEqualsExact_r(ctx, g->getGeometry(), other->getGeometry(), tolerance);
@@ -1350,7 +1350,7 @@ GEOSGeometry GEOSGeometry::getExteriorRing() {
 /** The returned geometry is a clone (not a borrowed reference).
     This method only works on Polygon geometries.
 
-    @param n the zero-based index of the interior ring
+    @param index the zero-based index of the interior ring
     @return a new GEOSGeometry representing the interior ring (LinearRing)
 
     @par Example:
@@ -1364,7 +1364,7 @@ printf("hole: %s\n", hole.toWKT());
     @throw GEOS-ERROR index out of range, error getting interior ring, or geometry is not a polygon
 
 */
-GEOSGeometry GEOSGeometry::getInteriorRingN(int n) {
+GEOSGeometry GEOSGeometry::getInteriorRingN(int index) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     int num = GEOSGetNumInteriorRings_r(ctx, g->getGeometry());
@@ -1374,14 +1374,14 @@ GEOSGeometry GEOSGeometry::getInteriorRingN(int n) {
         }
         return QoreValue();
     }
-    if (n < 0 || n >= num) {
-        xsink->raiseException("GEOS-ERROR", "interior ring index %d out of range (0..%d)", (int)n, num - 1);
+    if (index < 0 || index >= num) {
+        xsink->raiseException("GEOS-ERROR", "interior ring index %d out of range (0..%d)", (int)index, num - 1);
         return QoreValue();
     }
-    const GEOSGeometry* ring = GEOSGetInteriorRingN_r(ctx, g->getGeometry(), n);
+    const GEOSGeometry* ring = GEOSGetInteriorRingN_r(ctx, g->getGeometry(), index);
     if (!ring) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "getInteriorRingN")) {
-            xsink->raiseException("GEOS-ERROR", "error getting interior ring at index %d", (int)n);
+            xsink->raiseException("GEOS-ERROR", "error getting interior ring at index %d", (int)index);
         }
         return QoreValue();
     }
@@ -1462,13 +1462,13 @@ GEOSGeometry GEOSGeometry::getEndPoint() {
 }
 
 //! Returns the Nth point of a LineString geometry
-/** @param n the zero-based index of the point
+/** @param index the zero-based index of the point
     @return a new GEOSGeometry point
 
     @throw GEOS-ERROR index out of range, error getting point, or geometry is not a LineString
 
 */
-GEOSGeometry GEOSGeometry::getPointN(int n) {
+GEOSGeometry GEOSGeometry::getPointN(int index) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     int num = GEOSGeomGetNumPoints_r(ctx, g->getGeometry());
@@ -1479,15 +1479,15 @@ GEOSGeometry GEOSGeometry::getPointN(int n) {
         }
         return QoreValue();
     }
-    if (n < 0 || n >= num) {
-        xsink->raiseException("GEOS-ERROR", "point index %d out of range (0..%d)", (int)n, num - 1);
+    if (index < 0 || index >= num) {
+        xsink->raiseException("GEOS-ERROR", "point index %d out of range (0..%d)", (int)index, num - 1);
         return QoreValue();
     }
-    GEOSGeometry* result = GEOSGeomGetPointN_r(ctx, g->getGeometry(), n);
+    GEOSGeometry* result = GEOSGeomGetPointN_r(ctx, g->getGeometry(), index);
     if (!result) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "getPointN")) {
             xsink->raiseException("GEOS-ERROR",
-                "error getting point at index %d", (int)n);
+                "error getting point at index %d", (int)index);
         }
         return QoreValue();
     }
@@ -1595,7 +1595,7 @@ GEOSGeometry GEOSGeometry::makeValid() {
 
 //! Repairs an invalid geometry using the specified method
 /** @param method the repair method: @ref GEOS_MAKE_VALID_LINEWORK or @ref GEOS_MAKE_VALID_STRUCTURE
-    @param keepCollapsed if @ref True, the @ref GEOS_MAKE_VALID_STRUCTURE method will keep
+    @param keep_collapsed if @ref True, the @ref GEOS_MAKE_VALID_STRUCTURE method will keep
            components that have collapsed into a lower dimensionality
     @return a new valid GEOSGeometry
 
@@ -1609,7 +1609,7 @@ GEOSGeometry valid = invalid.makeValidWithParams(GEOS_MAKE_VALID_STRUCTURE, Fals
     @see @ref geos_make_valid_constants
 
 */
-GEOSGeometry GEOSGeometry::makeValidWithParams(int method = 0, bool keepCollapsed = False) {
+GEOSGeometry GEOSGeometry::makeValidWithParams(int method = 0, bool keep_collapsed = False) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
 
@@ -1619,7 +1619,7 @@ GEOSGeometry GEOSGeometry::makeValidWithParams(int method = 0, bool keepCollapse
         return QoreValue();
     }
     GEOSMakeValidParams_setMethod_r(ctx, params, static_cast<GEOSMakeValidMethods>(method));
-    GEOSMakeValidParams_setKeepCollapsed_r(ctx, params, keepCollapsed ? 1 : 0);
+    GEOSMakeValidParams_setKeepCollapsed_r(ctx, params, keep_collapsed ? 1 : 0);
 
     GEOSGeometry* result = GEOSMakeValidWithParams_r(ctx, g->getGeometry(), params);
     GEOSMakeValidParams_destroy_r(ctx, params);
@@ -1647,7 +1647,7 @@ GEOSGeometry simplified = complex_line.simplify(1.0);
           @ref topologyPreserveSimplify() for polygons.
 
 */
-GEOSGeometry GEOSGeometry::simplify(float tolerance) {
+GEOSGeometry GEOSGeometry::simplify(float tolerance) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSSimplify_r(ctx, g->getGeometry(), tolerance);
@@ -1676,7 +1676,7 @@ assertTrue(simplified.isValid());
     @throw GEOS-ERROR error simplifying geometry
 
 */
-GEOSGeometry GEOSGeometry::topologyPreserveSimplify(float tolerance) {
+GEOSGeometry GEOSGeometry::topologyPreserveSimplify(float tolerance) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSTopologyPreserveSimplify_r(ctx, g->getGeometry(), tolerance);
@@ -1732,7 +1732,7 @@ string matrix = poly.relate(pt); # "0F2FF1FF2"
     @throw GEOS-ERROR error computing relate matrix
 
 */
-string GEOSGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) {
+string GEOSGeometry::relate(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char* matrix = GEOSRelate_r(ctx, g->getGeometry(), other->getGeometry());
@@ -1763,7 +1763,7 @@ assertTrue(poly.relatePattern(pt, "T*****FF*"));
     @throw GEOS-ERROR error testing relate pattern
 
 */
-bool GEOSGeometry::relatePattern(GEOSGeometry[QoreGEOSGeometry] other, string pattern) {
+bool GEOSGeometry::relatePattern(GEOSGeometry[QoreGEOSGeometry] other, string pattern) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     char rv = GEOSRelatePattern_r(ctx, g->getGeometry(), other->getGeometry(), pattern->c_str());
@@ -1778,10 +1778,10 @@ bool GEOSGeometry::relatePattern(GEOSGeometry[QoreGEOSGeometry] other, string pa
 
 //! Computes a buffer with explicit cap and join style options
 /** @param width the buffer distance (positive or negative)
-    @param quadsegs the number of segments to approximate a quarter circle
-    @param endCapStyle the end cap style: @ref GEOSBUF_CAP_ROUND, @ref GEOSBUF_CAP_FLAT, or @ref GEOSBUF_CAP_SQUARE
-    @param joinStyle the join style: @ref GEOSBUF_JOIN_ROUND, @ref GEOSBUF_JOIN_MITRE, or @ref GEOSBUF_JOIN_BEVEL
-    @param mitreLimit the mitre limit ratio (only used with @ref GEOSBUF_JOIN_MITRE)
+    @param quad_segments the number of segments to approximate a quarter circle
+    @param end_cap_style the end cap style: @ref GEOSBUF_CAP_ROUND, @ref GEOSBUF_CAP_FLAT, or @ref GEOSBUF_CAP_SQUARE
+    @param join_style the join style: @ref GEOSBUF_JOIN_ROUND, @ref GEOSBUF_JOIN_MITRE, or @ref GEOSBUF_JOIN_BEVEL
+    @param mitre_limit the mitre limit ratio (only used with @ref GEOSBUF_JOIN_MITRE)
     @return a new GEOSGeometry representing the styled buffer
 
     @par Example:
@@ -1796,12 +1796,12 @@ GEOSGeometry buf = line.bufferWithStyle(2.0, 8, GEOSBUF_CAP_FLAT, GEOSBUF_JOIN_R
     @see @ref geos_buffer_style_constants
 
 */
-GEOSGeometry GEOSGeometry::bufferWithStyle(float width, int quadsegs = 8, int endCapStyle = 1,
-    int joinStyle = 1, float mitreLimit = 5.0) {
+GEOSGeometry GEOSGeometry::bufferWithStyle(float width, int quad_segments = 8, int end_cap_style = 1,
+    int join_style = 1, float mitre_limit = 5.0) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    GEOSGeometry* result = GEOSBufferWithStyle_r(ctx, g->getGeometry(), width, quadsegs,
-        endCapStyle, joinStyle, mitreLimit);
+    GEOSGeometry* result = GEOSBufferWithStyle_r(ctx, g->getGeometry(), width, quad_segments,
+        end_cap_style, join_style, mitre_limit);
     if (!result) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "bufferWithStyle")) {
             xsink->raiseException("GEOS-ERROR", "error computing styled buffer");
@@ -1815,9 +1815,9 @@ GEOSGeometry GEOSGeometry::bufferWithStyle(float width, int quadsegs = 8, int en
 /** A positive width offsets to the left, negative to the right.
 
     @param width the offset distance (positive = left, negative = right)
-    @param quadsegs the number of segments to approximate a quarter circle
-    @param joinStyle the join style: @ref GEOSBUF_JOIN_ROUND, @ref GEOSBUF_JOIN_MITRE, or @ref GEOSBUF_JOIN_BEVEL
-    @param mitreLimit the mitre limit ratio (only used with @ref GEOSBUF_JOIN_MITRE)
+    @param quad_segments the number of segments to approximate a quarter circle
+    @param join_style the join style: @ref GEOSBUF_JOIN_ROUND, @ref GEOSBUF_JOIN_MITRE, or @ref GEOSBUF_JOIN_BEVEL
+    @param mitre_limit the mitre limit ratio (only used with @ref GEOSBUF_JOIN_MITRE)
     @return a new GEOSGeometry representing the offset curve
 
     @par Example:
@@ -1829,12 +1829,12 @@ GEOSGeometry offset = line.offsetCurve(2.0);
     @throw GEOS-ERROR error computing offset curve
 
 */
-GEOSGeometry GEOSGeometry::offsetCurve(float width, int quadsegs = 8, int joinStyle = 1,
-    float mitreLimit = 5.0) {
+GEOSGeometry GEOSGeometry::offsetCurve(float width, int quad_segments = 8, int join_style = 1,
+    float mitre_limit = 5.0) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    GEOSGeometry* result = GEOSOffsetCurve_r(ctx, g->getGeometry(), width, quadsegs,
-        joinStyle, mitreLimit);
+    GEOSGeometry* result = GEOSOffsetCurve_r(ctx, g->getGeometry(), width, quad_segments,
+        join_style, mitre_limit);
     if (!result) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "offsetCurve")) {
             xsink->raiseException("GEOS-ERROR", "error computing offset curve");
@@ -1858,7 +1858,7 @@ string pretty = pt.toGeoJSON(2);    # pretty-printed
     @throw GEOS-ERROR error serializing to GeoJSON
 
 */
-string GEOSGeometry::toGeoJSON(int indent = -1) {
+string GEOSGeometry::toGeoJSON(int indent = -1) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeoJSONWriter* writer = GEOSGeoJSONWriter_create_r(ctx);
@@ -1890,7 +1890,7 @@ string GEOSGeometry::toGeoJSON(int indent = -1) {
     @throw GEOS-ERROR error computing distance
 
 */
-float GEOSGeometry::hausdorffDistance(GEOSGeometry[QoreGEOSGeometry] other) {
+float GEOSGeometry::hausdorffDistance(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     double dist;
@@ -1908,18 +1908,18 @@ float GEOSGeometry::hausdorffDistance(GEOSGeometry[QoreGEOSGeometry] other) {
     Hausdorff distance is a closer approximation of the actual Hausdorff distance.
 
     @param other the geometry to compare with
-    @param densifyFrac the fraction by which to densify each segment (0.0 - 1.0)
+    @param densify_fraction the fraction by which to densify each segment (0.0 - 1.0)
     @return the densified Hausdorff distance
 
     @throw GEOS-ERROR error computing distance
 
 */
-float GEOSGeometry::hausdorffDistanceDensify(GEOSGeometry[QoreGEOSGeometry] other, float densifyFrac) {
+float GEOSGeometry::hausdorffDistanceDensify(GEOSGeometry[QoreGEOSGeometry] other, float densify_fraction) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     double dist;
     if (!GEOSHausdorffDistanceDensify_r(ctx, g->getGeometry(), other->getGeometry(),
-            densifyFrac, &dist)) {
+            densify_fraction, &dist)) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "hausdorffDistanceDensify")) {
             xsink->raiseException("GEOS-ERROR", "error computing densified Hausdorff distance");
         }
@@ -1938,7 +1938,7 @@ float GEOSGeometry::hausdorffDistanceDensify(GEOSGeometry[QoreGEOSGeometry] othe
     @throw GEOS-ERROR error computing distance
 
 */
-float GEOSGeometry::frechetDistance(GEOSGeometry[QoreGEOSGeometry] other) {
+float GEOSGeometry::frechetDistance(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     double dist;
@@ -1953,18 +1953,18 @@ float GEOSGeometry::frechetDistance(GEOSGeometry[QoreGEOSGeometry] other) {
 
 //! Computes the Frechet distance with densification
 /** @param other the geometry to compare with
-    @param densifyFrac the fraction by which to densify each segment (0.0 - 1.0)
+    @param densify_fraction the fraction by which to densify each segment (0.0 - 1.0)
     @return the densified Frechet distance
 
     @throw GEOS-ERROR error computing distance
 
 */
-float GEOSGeometry::frechetDistanceDensify(GEOSGeometry[QoreGEOSGeometry] other, float densifyFrac) {
+float GEOSGeometry::frechetDistanceDensify(GEOSGeometry[QoreGEOSGeometry] other, float densify_fraction) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     double dist;
     if (!GEOSFrechetDistanceDensify_r(ctx, g->getGeometry(), other->getGeometry(),
-            densifyFrac, &dist)) {
+            densify_fraction, &dist)) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "frechetDistanceDensify")) {
             xsink->raiseException("GEOS-ERROR", "error computing densified Frechet distance");
         }
@@ -1978,16 +1978,16 @@ float GEOSGeometry::frechetDistanceDensify(GEOSGeometry[QoreGEOSGeometry] other,
     the computation can short-circuit as soon as the threshold is exceeded.
 
     @param other the geometry to test
-    @param dist the distance threshold
+    @param distance the distance threshold
     @return @ref True if the geometries are within the given distance
 
     @throw GEOS-ERROR error computing distance
 
 */
-bool GEOSGeometry::distanceWithin(GEOSGeometry[QoreGEOSGeometry] other, float dist) {
+bool GEOSGeometry::distanceWithin(GEOSGeometry[QoreGEOSGeometry] other, float distance) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    char rv = GEOSDistanceWithin_r(ctx, g->getGeometry(), other->getGeometry(), dist);
+    char rv = GEOSDistanceWithin_r(ctx, g->getGeometry(), other->getGeometry(), distance);
     if (rv == 2) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "distanceWithin")) {
             xsink->raiseException("GEOS-ERROR", "error in distanceWithin");
@@ -2007,7 +2007,7 @@ bool GEOSGeometry::distanceWithin(GEOSGeometry[QoreGEOSGeometry] other, float di
     @throw GEOS-ERROR error computing distance
 
 */
-float GEOSGeometry::distanceIndexed(GEOSGeometry[QoreGEOSGeometry] other) {
+float GEOSGeometry::distanceIndexed(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     double dist;
@@ -2107,8 +2107,8 @@ GEOSGeometry GEOSGeometry::lineMergeDirected() {
 /** The start and end fractions are values between 0.0 (start of line) and
     1.0 (end of line).
 
-    @param startFraction the fraction along the line for the start of the substring
-    @param endFraction the fraction along the line for the end of the substring
+    @param start_fraction the fraction along the line for the start of the substring
+    @param end_fraction the fraction along the line for the end of the substring
     @return a new GEOSGeometry representing the substring
 
     @par Example:
@@ -2120,11 +2120,11 @@ GEOSGeometry sub = line.lineSubstring(0.25, 0.75);
     @throw GEOS-ERROR error extracting line substring
 
 */
-GEOSGeometry GEOSGeometry::lineSubstring(float startFraction, float endFraction) {
+GEOSGeometry GEOSGeometry::lineSubstring(float start_fraction, float end_fraction) [flags=NAMED_ARGS] {
 #if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    GEOSGeometry* result = GEOSLineSubstring_r(ctx, g->getGeometry(), startFraction, endFraction);
+    GEOSGeometry* result = GEOSLineSubstring_r(ctx, g->getGeometry(), start_fraction, end_fraction);
     if (!result) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "lineSubstring")) {
             xsink->raiseException("GEOS-ERROR", "error extracting line substring");
@@ -2212,7 +2212,7 @@ GEOSGeometry clipped = poly.clipByRect(0.0, 0.0, 10.0, 10.0);
     @throw GEOS-ERROR error clipping geometry
 
 */
-GEOSGeometry GEOSGeometry::clipByRect(float xmin, float ymin, float xmax, float ymax) {
+GEOSGeometry GEOSGeometry::clipByRect(float xmin, float ymin, float xmax, float ymax) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSClipByRect_r(ctx, g->getGeometry(), xmin, ymin, xmax, ymax);
@@ -2242,7 +2242,7 @@ GEOSGeometry snapped = g1.snap(g2, 1.0);
     @throw GEOS-ERROR error snapping geometry
 
 */
-GEOSGeometry GEOSGeometry::snap(GEOSGeometry[QoreGEOSGeometry] other, float tolerance) {
+GEOSGeometry GEOSGeometry::snap(GEOSGeometry[QoreGEOSGeometry] other, float tolerance) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSSnap_r(ctx, g->getGeometry(), other->getGeometry(), tolerance);
@@ -2257,7 +2257,7 @@ GEOSGeometry GEOSGeometry::snap(GEOSGeometry[QoreGEOSGeometry] other, float tole
 
 //! Computes a Delaunay triangulation of the vertices of this geometry
 /** @param tolerance the snapping tolerance for vertices (default 0.0)
-    @param onlyEdges if @ref True, return only the edges as a MultiLineString; if @ref False (default), return triangles as a GeometryCollection
+    @param only_edges if @ref True, return only the edges as a MultiLineString; if @ref False (default), return triangles as a GeometryCollection
 
     @return a new GEOSGeometry with the triangulation result
 
@@ -2270,11 +2270,11 @@ GEOSGeometry triangles = pts.delaunayTriangulation();
     @throw GEOS-ERROR error computing Delaunay triangulation
 
 */
-GEOSGeometry GEOSGeometry::delaunayTriangulation(float tolerance = 0.0, bool onlyEdges = False) {
+GEOSGeometry GEOSGeometry::delaunayTriangulation(float tolerance = 0.0, bool only_edges = False) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSDelaunayTriangulation_r(ctx, g->getGeometry(), tolerance,
-        onlyEdges ? 1 : 0);
+        only_edges ? 1 : 0);
     if (!result) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "delaunayTriangulation")) {
             xsink->raiseException("GEOS-ERROR", "error computing Delaunay triangulation");
@@ -2314,7 +2314,7 @@ GEOSGeometry GEOSGeometry::constrainedDelaunayTriangulation() {
 
 //! Computes the Voronoi diagram of the vertices of this geometry
 /** @param tolerance the snapping tolerance for vertices (default 0.0)
-    @param onlyEdges if @ref True, return only the edges as a MultiLineString; if @ref False (default), return polygons as a GeometryCollection
+    @param only_edges if @ref True, return only the edges as a MultiLineString; if @ref False (default), return polygons as a GeometryCollection
 
     @return a new GEOSGeometry with the Voronoi diagram
 
@@ -2327,11 +2327,11 @@ GEOSGeometry voronoi = pts.voronoiDiagram();
     @throw GEOS-ERROR error computing Voronoi diagram
 
 */
-GEOSGeometry GEOSGeometry::voronoiDiagram(float tolerance = 0.0, bool onlyEdges = False) {
+GEOSGeometry GEOSGeometry::voronoiDiagram(float tolerance = 0.0, bool only_edges = False) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSVoronoiDiagram_r(ctx, g->getGeometry(), nullptr, tolerance,
-        onlyEdges ? 1 : 0);
+        only_edges ? 1 : 0);
     if (!result) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "voronoiDiagram")) {
             xsink->raiseException("GEOS-ERROR", "error computing Voronoi diagram");
@@ -2346,7 +2346,7 @@ GEOSGeometry GEOSGeometry::voronoiDiagram(float tolerance = 0.0, bool onlyEdges 
     A ratio of 1.0 produces the convex hull, while smaller values produce more concave results.
 
     @param ratio the concavity ratio (0.0 - 1.0)
-    @param allowHoles if @ref True, the result may contain holes (default @ref False)
+    @param allow_holes if @ref True, the result may contain holes (default @ref False)
     @return a new GEOSGeometry representing the concave hull
 
     @par Example:
@@ -2358,10 +2358,10 @@ GEOSGeometry hull = pts.concaveHull(0.5);
     @throw GEOS-ERROR error computing concave hull
 
 */
-GEOSGeometry GEOSGeometry::concaveHull(float ratio, bool allowHoles = False) {
+GEOSGeometry GEOSGeometry::concaveHull(float ratio, bool allow_holes = False) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    GEOSGeometry* result = GEOSConcaveHull_r(ctx, g->getGeometry(), ratio, allowHoles ? 1 : 0);
+    GEOSGeometry* result = GEOSConcaveHull_r(ctx, g->getGeometry(), ratio, allow_holes ? 1 : 0);
     if (!result) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "concaveHull")) {
             xsink->raiseException("GEOS-ERROR", "error computing concave hull");
@@ -2375,7 +2375,7 @@ GEOSGeometry GEOSGeometry::concaveHull(float ratio, bool allowHoles = False) {
 /** Similar to @ref concaveHull() but uses an absolute edge length rather than a ratio.
 
     @param length the maximum edge length
-    @param allowHoles if @ref True, the result may contain holes (default @ref False)
+    @param allow_holes if @ref True, the result may contain holes (default @ref False)
     @return a new GEOSGeometry representing the concave hull
 
     @par Example:
@@ -2387,12 +2387,12 @@ GEOSGeometry hull = pts.concaveHullByLength(5.0);
     @throw GEOS-ERROR error computing concave hull by length
 
 */
-GEOSGeometry GEOSGeometry::concaveHullByLength(float length, bool allowHoles = False) {
+GEOSGeometry GEOSGeometry::concaveHullByLength(float length, bool allow_holes = False) [flags=NAMED_ARGS] {
 #if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSConcaveHullByLength_r(ctx, g->getGeometry(), length,
-        allowHoles ? 1 : 0);
+        allow_holes ? 1 : 0);
     if (!result) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "concaveHullByLength")) {
             xsink->raiseException("GEOS-ERROR", "error computing concave hull by length");
@@ -2409,8 +2409,8 @@ GEOSGeometry GEOSGeometry::concaveHullByLength(float length, bool allowHoles = F
 //! Computes a simplified polygon hull of a polygon geometry
 /** Simplifies a polygon by reducing vertices while maintaining validity.
 
-    @param isOuter if @ref True, simplify the outer hull; if @ref False, simplify the inner hull
-    @param vertexFraction the fraction of vertices to retain (0.0 - 1.0)
+    @param outer if @ref True, simplify the outer hull; if @ref False, simplify the inner hull
+    @param vertex_fraction the fraction of vertices to retain (0.0 - 1.0)
     @return a new GEOSGeometry representing the simplified hull
 
     @par Example:
@@ -2422,11 +2422,11 @@ GEOSGeometry simplified = poly.polygonHullSimplify(True, 1.0);
     @throw GEOS-ERROR error computing polygon hull simplification
 
 */
-GEOSGeometry GEOSGeometry::polygonHullSimplify(bool isOuter, float vertexFraction) {
+GEOSGeometry GEOSGeometry::polygonHullSimplify(bool outer, float vertex_fraction) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    GEOSGeometry* result = GEOSPolygonHullSimplify_r(ctx, g->getGeometry(), isOuter ? 1 : 0,
-        vertexFraction);
+    GEOSGeometry* result = GEOSPolygonHullSimplify_r(ctx, g->getGeometry(), outer ? 1 : 0,
+        vertex_fraction);
     if (!result) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "polygonHullSimplify")) {
             xsink->raiseException("GEOS-ERROR", "error computing polygon hull simplification");
@@ -2453,7 +2453,7 @@ GEOSGeometry mic = poly.maximumInscribedCircle(0.01);
     @throw GEOS-ERROR error computing maximum inscribed circle
 
 */
-GEOSGeometry GEOSGeometry::maximumInscribedCircle(float tolerance) {
+GEOSGeometry GEOSGeometry::maximumInscribedCircle(float tolerance) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSMaximumInscribedCircle_r(ctx, g->getGeometry(), tolerance);
@@ -2485,7 +2485,7 @@ GEOSGeometry lec = poly.largestEmptyCircle(obstacles, 0.01);
     @throw GEOS-ERROR error computing largest empty circle
 
 */
-GEOSGeometry GEOSGeometry::largestEmptyCircle(GEOSGeometry[QoreGEOSGeometry] obstacles, float tolerance) {
+GEOSGeometry GEOSGeometry::largestEmptyCircle(GEOSGeometry[QoreGEOSGeometry] obstacles, float tolerance) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSLargestEmptyCircle_r(ctx, obstacles->getGeometry(), g->getGeometry(),
@@ -2670,8 +2670,8 @@ GEOSGeometry GEOSGeometry::buildArea() {
 /** Creates a new geometry with precision reduced to the given grid size.
     The original geometry is not modified.
 
-    @param gridSize the grid cell size to snap coordinates to (0 means full precision)
-    @param flags optional flags controlling precision reduction behavior (default 0)
+    @param grid_size the grid cell size to snap coordinates to (0 means full precision)
+    @param precision_flags optional flags controlling precision reduction behavior (default 0)
 
     @return a new GEOSGeometry with snapped coordinates
 
@@ -2686,10 +2686,10 @@ printf("precision: %f\n", snapped.getPrecision());
 
     @since geos 1.2
 */
-GEOSGeometry GEOSGeometry::setPrecision(float gridSize, int flags = 0) {
+GEOSGeometry GEOSGeometry::setPrecision(float grid_size, int precision_flags = 0) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
-    GEOSGeometry* result = GEOSGeom_setPrecision_r(ctx, g->getGeometry(), gridSize, flags);
+    GEOSGeometry* result = GEOSGeom_setPrecision_r(ctx, g->getGeometry(), grid_size, precision_flags);
     if (!result) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "setPrecision")) {
             xsink->raiseException("GEOS-ERROR", "error setting geometry precision");
@@ -2747,7 +2747,7 @@ printf("scaled area: %f\n", scaled.area());
 
     @since geos 1.2
 */
-GEOSGeometry GEOSGeometry::transformXY(code callback) {
+GEOSGeometry GEOSGeometry::transformXY(code callback) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
 
@@ -2805,7 +2805,7 @@ GEOSGeometry GEOSGeometry::coverageUnion() {
     of the coverage. Shared edges are simplified consistently.
 
     @param tolerance the simplification tolerance
-    @param preserveBoundary if @ref True (default), the boundary of the coverage
+    @param preserve_boundary if @ref True (default), the boundary of the coverage
            is preserved; if @ref False, the boundary may be simplified
 
     @return a new GEOSGeometry collection with simplified polygons
@@ -2820,12 +2820,12 @@ GEOSGeometry simplified_no_boundary = coverage.coverageSimplifyVW(1.0, False);
 
     @since geos 1.3
 */
-GEOSGeometry GEOSGeometry::coverageSimplifyVW(float tolerance, bool preserveBoundary = True) {
+GEOSGeometry GEOSGeometry::coverageSimplifyVW(float tolerance, bool preserve_boundary = True) [flags=NAMED_ARGS] {
 #if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSCoverageSimplifyVW_r(ctx, g->getGeometry(), tolerance,
-        preserveBoundary ? 1 : 0);
+        preserve_boundary ? 1 : 0);
     if (!result) {
         if (!check_geos_error(xsink, "GEOS-ERROR", "coverageSimplifyVW")) {
             xsink->raiseException("GEOS-ERROR", "error simplifying coverage");
@@ -2844,7 +2844,7 @@ GEOSGeometry GEOSGeometry::coverageSimplifyVW(float tolerance, bool preserveBoun
     a geometry indicating any invalid locations found with the given gap width
     tolerance.
 
-    @param gapWidth the maximum gap width to tolerate (0.0 for strict validation)
+    @param gap_width the maximum gap width to tolerate (0.0 for strict validation)
 
     @return a geometry indicating invalid locations, or an empty geometry if the
             coverage is valid
@@ -2861,12 +2861,12 @@ if (result.isEmpty()) {
 
     @since geos 1.3
 */
-GEOSGeometry GEOSGeometry::coverageIsValid(float gapWidth = 0.0) {
+GEOSGeometry GEOSGeometry::coverageIsValid(float gap_width = 0.0) [flags=NAMED_ARGS] {
 #if GEOS_VERSION_MAJOR > 3 || (GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR >= 12)
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* output = nullptr;
-    int rv = GEOSCoverageIsValid_r(ctx, g->getGeometry(), gapWidth, &output);
+    int rv = GEOSCoverageIsValid_r(ctx, g->getGeometry(), gap_width, &output);
     if (rv == 0) {
         if (output) {
             GEOSGeom_destroy_r(ctx, output);
@@ -2935,7 +2935,7 @@ GEOSGeometry shared = line1.sharedPaths(line2);
 
     @since geos 1.3
 */
-GEOSGeometry GEOSGeometry::sharedPaths(GEOSGeometry[QoreGEOSGeometry] other) {
+GEOSGeometry GEOSGeometry::sharedPaths(GEOSGeometry[QoreGEOSGeometry] other) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSSharedPaths_r(ctx, g->getGeometry(), other->getGeometry());
@@ -2967,7 +2967,7 @@ GEOSGeometry deduped = line.removeRepeatedPoints(0.0);
 
     @since geos 1.3
 */
-GEOSGeometry GEOSGeometry::removeRepeatedPoints(float tolerance) {
+GEOSGeometry GEOSGeometry::removeRepeatedPoints(float tolerance) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSRemoveRepeatedPoints_r(ctx, g->getGeometry(), tolerance);
@@ -2999,7 +2999,7 @@ GEOSGeometry dense = line.densify(2.0);
 
     @since geos 1.3
 */
-GEOSGeometry GEOSGeometry::densify(float tolerance) {
+GEOSGeometry GEOSGeometry::densify(float tolerance) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* result = GEOSDensify_r(ctx, g->getGeometry(), tolerance);

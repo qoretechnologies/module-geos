@@ -51,7 +51,7 @@ GEOSWKBReader::constructor() {
 
     @throw GEOS-ERROR error parsing WKB data
 */
-GEOSGeometry GEOSWKBReader::read(binary wkb) {
+GEOSGeometry GEOSWKBReader::read(binary wkb) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* geom = GEOSWKBReader_read_r(ctx, r->getReader(),
@@ -71,7 +71,7 @@ GEOSGeometry GEOSWKBReader::read(binary wkb) {
 
     @throw GEOS-ERROR error parsing hex WKB string
 */
-GEOSGeometry GEOSWKBReader::readHEX(string hex) {
+GEOSGeometry GEOSWKBReader::readHEX(string hex) [flags=NAMED_ARGS] {
     GEOSContextHandle_t ctx = geos_get_context();
     geos_error_msg.clear();
     GEOSGeometry* geom = GEOSWKBReader_readHEX_r(ctx, r->getReader(),
