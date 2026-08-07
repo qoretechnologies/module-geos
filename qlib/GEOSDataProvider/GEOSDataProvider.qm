@@ -227,6 +227,7 @@ namespace Priv {
         # register the data provider application
         DataProviderActionCatalog::registerApp(<DataProviderAppInfo>{
             "name": GEOSDataProvider::AppName,
+            "presentation_source_locale": "en",
             "display_name": "GEOS Geometry",
             "short_desc": "Read and write GEOS geometry data in WKT/WKB/GeoJSON formats",
             "desc": "Read and write GEOS geometry data in WKT (Well-Known Text), WKB (Well-Known Binary), "
