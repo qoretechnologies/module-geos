@@ -1,0 +1,329 @@
+{
+  "schema_version": 1,
+  "locales": {
+    "it": {
+      "messages": {
+        "app.R0VPUw.action.cmVhZC13a2I.desc": {
+          "source": "Read WKB geometry data from a file location",
+          "message": "Legge dati geometrici WKB dal percorso di un file"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.display_name": {
+          "source": "Read WKB File",
+          "message": "Leggi file WKB"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.ZW5jb2Rpbmc.desc": {
+          "source": "The character encoding to use when reading hex data (default: UTF-8)",
+          "message": "La codifica dei caratteri da utilizzare durante la lettura dei dati esadecimali (predefinita: UTF-8)"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.ZW5jb2Rpbmc.display_name": {
+          "source": "Encoding",
+          "message": "Codifica"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.ZW5jb2Rpbmc.short_desc": {
+          "source": "Character encoding for hex mode",
+          "message": "Codifica caratteri per la modalità esadecimale"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.Zm9ybWF0.allowed-value.c3RyaW5nOmJpbmFyeQ.desc": {
+          "source": "Length-prefixed binary WKB data (4-byte big-endian uint32 length + raw WKB)",
+          "message": "Dati WKB binari con prefisso di lunghezza (lunghezza uint32 big-endian a 4 byte + WKB grezzo)"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.Zm9ybWF0.allowed-value.c3RyaW5nOmJpbmFyeQ.display_name": {
+          "source": "Binary",
+          "message": "Binario"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.Zm9ybWF0.allowed-value.c3RyaW5nOmhleA.desc": {
+          "source": "Hex-encoded WKB data, one geometry per line (default)",
+          "message": "Dati WKB con codifica esadecimale, una geometria per riga (predefinito)"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.Zm9ybWF0.allowed-value.c3RyaW5nOmhleA.display_name": {
+          "source": "Hex",
+          "message": "Hex"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.Zm9ybWF0.desc": {
+          "source": "The WKB data format: `hex` (default) for hex-encoded lines, `binary` for length-prefixed binary",
+          "message": "Il formato dati WKB: `hex` (predefinito) per righe con codifica esadecimale, `binary` per dati binari con prefisso di lunghezza"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.Zm9ybWF0.display_name": {
+          "source": "Format",
+          "message": "Formato"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.Zm9ybWF0.short_desc": {
+          "source": "WKB data format",
+          "message": "Formato dati WKB"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.c2tpcF9lbXB0eV9saW5lcw.desc": {
+          "source": "If `True` (default), empty lines are skipped during iteration in hex mode",
+          "message": "Se `True` (predefinito), le righe vuote vengono ignorate durante l'iterazione in modalità esadecimale"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.c2tpcF9lbXB0eV9saW5lcw.display_name": {
+          "source": "Skip Empty Lines",
+          "message": "Ignora righe vuote"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.c2tpcF9lbXB0eV9saW5lcw.short_desc": {
+          "source": "Skip empty lines in hex mode",
+          "message": "Ignora le righe vuote in modalità esadecimale"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.cGF0aA.desc": {
+          "source": "The filesystem path or location URL for the WKB file to read; the input location is handled by a call to [FileLocationHandler::getBinaryStreamFromLocation()]()",
+          "message": "Il percorso del file system o l'URL di origine per il file WKB da leggere; la posizione di input viene gestita da una chiamata a [FileLocationHandler::getBinaryStreamFromLocation()]()"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.cGF0aA.display_name": {
+          "source": "File Path",
+          "message": "Percorso file"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.option.cGF0aA.short_desc": {
+          "source": "The path to the WKB file to read",
+          "message": "Il percorso del file WKB da leggere"
+        },
+        "app.R0VPUw.action.cmVhZC13a2I.short_desc": {
+          "source": "Read WKB geometry data from a file",
+          "message": "Legge dati geometrici WKB da un file"
+        },
+        "app.R0VPUw.action.cmVhZC13a3Q.desc": {
+          "source": "Read WKT geometry data from a file location",
+          "message": "Legge dati geometrici WKT dal percorso di un file"
+        },
+        "app.R0VPUw.action.cmVhZC13a3Q.display_name": {
+          "source": "Read WKT File",
+          "message": "Leggi file WKT"
+        },
+        "app.R0VPUw.action.cmVhZC13a3Q.option.ZW5jb2Rpbmc.desc": {
+          "source": "The character encoding to use when reading the input (default: UTF-8)",
+          "message": "La codifica dei caratteri da utilizzare durante la lettura dell'input (predefinita: UTF-8)"
+        },
+        "app.R0VPUw.action.cmVhZC13a3Q.option.ZW5jb2Rpbmc.display_name": {
+          "source": "Encoding",
+          "message": "Codifica"
+        },
+        "app.R0VPUw.action.cmVhZC13a3Q.option.ZW5jb2Rpbmc.short_desc": {
+          "source": "Character encoding for the input",
+          "message": "Codifica caratteri per l'input"
+        },
+        "app.R0VPUw.action.cmVhZC13a3Q.option.c2tpcF9lbXB0eV9saW5lcw.desc": {
+          "source": "If `True` (default), empty lines are skipped during iteration",
+          "message": "Se `True` (predefinito), le righe vuote vengono ignorate durante l'iterazione"
+        },
+        "app.R0VPUw.action.cmVhZC13a3Q.option.c2tpcF9lbXB0eV9saW5lcw.display_name": {
+          "source": "Skip Empty Lines",
+          "message": "Ignora righe vuote"
+        },
+        "app.R0VPUw.action.cmVhZC13a3Q.option.c2tpcF9lbXB0eV9saW5lcw.short_desc": {
+          "source": "Skip empty lines in the input",
+          "message": "Ignora le righe vuote nell'input"
+        },
+        "app.R0VPUw.action.cmVhZC13a3Q.option.cGF0aA.desc": {
+          "source": "The filesystem path or location URL for the WKT file to read; the input location is handled by a call to [FileLocationHandler::getBinaryStreamFromLocation()]()",
+          "message": "Il percorso del file system o l'URL di origine per il file WKT da leggere; la posizione di input viene gestita da una chiamata a [FileLocationHandler::getBinaryStreamFromLocation()]()"
+        },
+        "app.R0VPUw.action.cmVhZC13a3Q.option.cGF0aA.display_name": {
+          "source": "File Path",
+          "message": "Percorso file"
+        },
+        "app.R0VPUw.action.cmVhZC13a3Q.option.cGF0aA.short_desc": {
+          "source": "The path to the WKT file to read",
+          "message": "Il percorso del file WKT da leggere"
+        },
+        "app.R0VPUw.action.cmVhZC13a3Q.short_desc": {
+          "source": "Read WKT geometry data from a file",
+          "message": "Legge dati geometrici WKT da un file"
+        },
+        "app.R0VPUw.action.cmVhZC1nZW9qc29u.desc": {
+          "source": "Read GeoJSON geometry data from a file location (line-delimited GeoJSON format)",
+          "message": "Legge dati geometrici GeoJSON dal percorso di un file (formato GeoJSON delimitato da righe)"
+        },
+        "app.R0VPUw.action.cmVhZC1nZW9qc29u.display_name": {
+          "source": "Read GeoJSON File",
+          "message": "Leggi file GeoJSON"
+        },
+        "app.R0VPUw.action.cmVhZC1nZW9qc29u.option.ZW5jb2Rpbmc.desc": {
+          "source": "The character encoding to use when reading the input (default: UTF-8)",
+          "message": "La codifica dei caratteri da utilizzare durante la lettura dell'input (predefinita: UTF-8)"
+        },
+        "app.R0VPUw.action.cmVhZC1nZW9qc29u.option.ZW5jb2Rpbmc.display_name": {
+          "source": "Encoding",
+          "message": "Codifica"
+        },
+        "app.R0VPUw.action.cmVhZC1nZW9qc29u.option.ZW5jb2Rpbmc.short_desc": {
+          "source": "Character encoding for the input",
+          "message": "Codifica caratteri per l'input"
+        },
+        "app.R0VPUw.action.cmVhZC1nZW9qc29u.option.c2tpcF9lbXB0eV9saW5lcw.desc": {
+          "source": "If `True` (default), empty lines are skipped during iteration",
+          "message": "Se `True` (predefinito), le righe vuote vengono ignorate durante l'iterazione"
+        },
+        "app.R0VPUw.action.cmVhZC1nZW9qc29u.option.c2tpcF9lbXB0eV9saW5lcw.display_name": {
+          "source": "Skip Empty Lines",
+          "message": "Ignora righe vuote"
+        },
+        "app.R0VPUw.action.cmVhZC1nZW9qc29u.option.c2tpcF9lbXB0eV9saW5lcw.short_desc": {
+          "source": "Skip empty lines in the input",
+          "message": "Ignora le righe vuote nell'input"
+        },
+        "app.R0VPUw.action.cmVhZC1nZW9qc29u.option.cGF0aA.desc": {
+          "source": "The filesystem path or location URL for the GeoJSON file to read; the input location is handled by a call to [FileLocationHandler::getBinaryStreamFromLocation()]()",
+          "message": "Il percorso del file system o l'URL di posizione per il file GeoJSON da leggere; la posizione di input viene gestita da una chiamata a [FileLocationHandler::getBinaryStreamFromLocation()]()"
+        },
+        "app.R0VPUw.action.cmVhZC1nZW9qc29u.option.cGF0aA.display_name": {
+          "source": "File Path",
+          "message": "Percorso file"
+        },
+        "app.R0VPUw.action.cmVhZC1nZW9qc29u.option.cGF0aA.short_desc": {
+          "source": "The path to the GeoJSON file to read",
+          "message": "Il percorso del file GeoJSON da leggere"
+        },
+        "app.R0VPUw.action.cmVhZC1nZW9qc29u.short_desc": {
+          "source": "Read GeoJSON geometry data from a file",
+          "message": "Leggi dati geometrici GeoJSON da un file"
+        },
+        "app.R0VPUw.action.d3JpdGUtZ2VvanNvbg.desc": {
+          "source": "Write GeoJSON geometry data to a file location (line-delimited GeoJSON format)",
+          "message": "Scrivi dati geometrici GeoJSON in una posizione di file (formato GeoJSON delimitato da righe)"
+        },
+        "app.R0VPUw.action.d3JpdGUtZ2VvanNvbg.display_name": {
+          "source": "Write GeoJSON File",
+          "message": "Scrivi file GeoJSON"
+        },
+        "app.R0VPUw.action.d3JpdGUtZ2VvanNvbg.option.ZW5jb2Rpbmc.desc": {
+          "source": "The character encoding to use when writing the output (default: UTF-8)",
+          "message": "La codifica dei caratteri da utilizzare durante la scrittura dell'output (predefinita: UTF-8)"
+        },
+        "app.R0VPUw.action.d3JpdGUtZ2VvanNvbg.option.ZW5jb2Rpbmc.display_name": {
+          "source": "Encoding",
+          "message": "Codifica"
+        },
+        "app.R0VPUw.action.d3JpdGUtZ2VvanNvbg.option.ZW5jb2Rpbmc.short_desc": {
+          "source": "Character encoding for the output",
+          "message": "Codifica dei caratteri per l'output"
+        },
+        "app.R0VPUw.action.d3JpdGUtZ2VvanNvbg.option.cGF0aA.desc": {
+          "source": "The filesystem path or location URL for the GeoJSON output file; the output location is handled by a call to [FileLocationHandler::getOutputStreamForLocation()]()",
+          "message": "Il percorso del file system o l'URL di posizione per il file di output GeoJSON; la posizione di output viene gestita da una chiamata a [FileLocationHandler::getOutputStreamForLocation()]()"
+        },
+        "app.R0VPUw.action.d3JpdGUtZ2VvanNvbg.option.cGF0aA.display_name": {
+          "source": "Output Path",
+          "message": "Percorso di output"
+        },
+        "app.R0VPUw.action.d3JpdGUtZ2VvanNvbg.option.cGF0aA.short_desc": {
+          "source": "The path to the output GeoJSON file",
+          "message": "Il percorso del file GeoJSON di output"
+        },
+        "app.R0VPUw.action.d3JpdGUtZ2VvanNvbg.short_desc": {
+          "source": "Write GeoJSON geometry data to a file",
+          "message": "Scrivi dati geometrici GeoJSON in un file"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2t0.desc": {
+          "source": "Write WKT geometry data to a file location",
+          "message": "Scrivi dati geometrici WKT in una posizione di file"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2t0.display_name": {
+          "source": "Write WKT File",
+          "message": "Scrivi file WKT"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2t0.option.ZW5jb2Rpbmc.desc": {
+          "source": "The character encoding to use when writing the output (default: UTF-8)",
+          "message": "La codifica dei caratteri da utilizzare durante la scrittura dell'output (predefinita: UTF-8)"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2t0.option.ZW5jb2Rpbmc.display_name": {
+          "source": "Encoding",
+          "message": "Codifica"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2t0.option.ZW5jb2Rpbmc.short_desc": {
+          "source": "Character encoding for the output",
+          "message": "Codifica dei caratteri per l'output"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2t0.option.cGF0aA.desc": {
+          "source": "The filesystem path or location URL for the WKT output file; the output location is handled by a call to [FileLocationHandler::getOutputStreamForLocation()]()",
+          "message": "Il percorso del file system o l'URL di posizione per il file di output WKT; la posizione di output viene gestita da una chiamata a [FileLocationHandler::getOutputStreamForLocation()]()"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2t0.option.cGF0aA.display_name": {
+          "source": "Output Path",
+          "message": "Percorso di output"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2t0.option.cGF0aA.short_desc": {
+          "source": "The path to the output WKT file",
+          "message": "Il percorso del file WKT di output"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2t0.short_desc": {
+          "source": "Write WKT geometry data to a file",
+          "message": "Scrivi dati geometrici WKT in un file"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.desc": {
+          "source": "Write WKB geometry data to a file location",
+          "message": "Scrivi dati geometrici WKB in una posizione di file"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.display_name": {
+          "source": "Write WKB File",
+          "message": "Scrivi file WKB"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.option.ZW5jb2Rpbmc.desc": {
+          "source": "The character encoding to use when writing hex data (default: UTF-8)",
+          "message": "La codifica dei caratteri da utilizzare durante la scrittura dei dati esadecimali (predefinita: UTF-8)"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.option.ZW5jb2Rpbmc.display_name": {
+          "source": "Encoding",
+          "message": "Codifica"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.option.ZW5jb2Rpbmc.short_desc": {
+          "source": "Character encoding for hex mode",
+          "message": "Codifica caratteri per la modalità esadecimale"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.option.Zm9ybWF0.allowed-value.c3RyaW5nOmJpbmFyeQ.desc": {
+          "source": "Length-prefixed binary WKB data (4-byte big-endian uint32 length + raw WKB)",
+          "message": "Dati WKB binari con prefisso di lunghezza (lunghezza uint32 big-endian a 4 byte + WKB grezzo)"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.option.Zm9ybWF0.allowed-value.c3RyaW5nOmJpbmFyeQ.display_name": {
+          "source": "Binary",
+          "message": "Binario"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.option.Zm9ybWF0.allowed-value.c3RyaW5nOmhleA.desc": {
+          "source": "Hex-encoded WKB data, one geometry per line (default)",
+          "message": "Dati WKB con codifica esadecimale, una geometria per riga (predefinito)"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.option.Zm9ybWF0.allowed-value.c3RyaW5nOmhleA.display_name": {
+          "source": "Hex",
+          "message": "Hex"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.option.Zm9ybWF0.desc": {
+          "source": "The WKB output format: `hex` (default) for hex-encoded lines, `binary` for length-prefixed binary",
+          "message": "Il formato di output WKB: `hex` (predefinito) per righe con codifica esadecimale, `binary` per binario con prefisso di lunghezza"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.option.Zm9ybWF0.display_name": {
+          "source": "Format",
+          "message": "Formato"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.option.Zm9ybWF0.short_desc": {
+          "source": "WKB output format",
+          "message": "Formato di output WKB"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.option.cGF0aA.desc": {
+          "source": "The filesystem path or location URL for the WKB output file; the output location is handled by a call to [FileLocationHandler::getOutputStreamForLocation()]()",
+          "message": "Il percorso del file system o l'URL di posizione per il file di output WKB; la posizione di output viene gestita da una chiamata a [FileLocationHandler::getOutputStreamForLocation()]()"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.option.cGF0aA.display_name": {
+          "source": "Output Path",
+          "message": "Percorso di output"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.option.cGF0aA.short_desc": {
+          "source": "The path to the output WKB file",
+          "message": "Il percorso del file WKB di output"
+        },
+        "app.R0VPUw.action.d3JpdGUtd2ti.short_desc": {
+          "source": "Write WKB geometry data to a file",
+          "message": "Scrivi dati geometrici WKB in un file"
+        },
+        "app.R0VPUw.desc": {
+          "source": "Read and write GEOS geometry data in WKT (Well-Known Text), WKB (Well-Known Binary), and GeoJSON formats for use in GIS data pipelines",
+          "message": "Leggi e scrivi dati geometrici GEOS nei formati WKT (Well-Known Text), WKB (Well-Known Binary) e GeoJSON da utilizzare nelle pipeline di dati GIS"
+        },
+        "app.R0VPUw.display_name": {
+          "source": "GEOS Geometry",
+          "message": "Geometria GEOS"
+        },
+        "app.R0VPUw.short_desc": {
+          "source": "Read and write GEOS geometry data in WKT/WKB/GeoJSON formats",
+          "message": "Leggi e scrivi dati geometrici GEOS nei formati WKT/WKB/GeoJSON"
+        }
+      }
+    }
+  }
+}
