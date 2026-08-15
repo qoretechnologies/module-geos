@@ -112,3 +112,30 @@
    Memcheck:Cond
    fun:GEOSSTRtree_nearest_generic_r
 }
+
+# --- PCRE2 JIT-generated code ---
+#
+# Qore compiles regular expressions with PCRE2's JIT.  The JIT emits code into
+# anonymous executable memory, so Valgrind cannot symbolize or unwind through
+# it (the frames appear as repeated "???" entries).  Its scanning loops test
+# whole words and rely on PCRE2's bounds tracking, which distribution PCRE2
+# builds do not annotate for Memcheck.  Keep these entries in sync with the
+# canonical PCRE2 JIT suppressions in Qore's qore.supp.
+#
+# Valgrind can only match unattributable frames as obj:*, so these entries also
+# cover other JIT-generated code.  Re-run without this suppression file when
+# investigating suspected generated-code defects.
+
+{
+   pcre2-jit-generated-code-cond
+   Memcheck:Cond
+   obj:*
+   ...
+}
+
+{
+   pcre2-jit-generated-code-value8
+   Memcheck:Value8
+   obj:*
+   ...
+}
