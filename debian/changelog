@@ -1,0 +1,9 @@
+qore-geos-module (1.0.0~git20260928.1-0qore1~ubuntu26.04) resolute; urgency=medium
+
+  * Package the native GEOS module, source/AOT provider, metadata and catalogs.
+  * Include API references, examples and matching debug symbols.
+  * Add offline builds, installed runtime/compiler tests and build profiles.
+  * Require CMake 3.21 for the existing file(COPY_FILE) documentation setup.
+  * Preserve isolated standard-library paths for qdx and qjar documentation.
+
+ -- David Nichols <david@qore.org>  Mon, 28 Sep 2026 23:37:54 +0000

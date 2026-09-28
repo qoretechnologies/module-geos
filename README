@@ -47,7 +47,7 @@ See COPYING.MIT for details on the open-source license.
 
 BUILDING
 --------
-Requires qore 0.9+ and libgeos (with C API / geos_c.h) to build and run.
+Requires CMake 3.21+, qore 0.9+ and libgeos (with C API / geos_c.h) to build and run.
 
 To configure and build:
     mkdir build

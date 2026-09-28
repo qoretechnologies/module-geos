@@ -1,0 +1,5 @@
+usr/lib/*/qore-modules/*.qmod
+usr/lib/*/qore-modules/GEOSDataProvider/
+usr/share/qore-modules/GEOSDataProvider/
+usr/share/qore/metadata/geos/*.meta.json
+usr/share/qore/i18n/

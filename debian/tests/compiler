@@ -1,0 +1,21 @@
+#!/bin/sh
+# Copyright (C) 2026 David Nichols
+# SPDX-License-Identifier: MIT
+set -eu
+unset QORE_MODULE_DIR QORE_MODULE_DIR_ONLY QORE_INCLUDE_DIR LD_LIBRARY_PATH LD_PRELOAD
+cd "$AUTOPKGTEST_TMP"
+cat > geos-smoke.q <<'EOF'
+%modern
+%requires geos
+%requires GEOSDataProvider
+GEOSGeometry origin = parse_wkt(wkt: "POINT (0 0)");
+GEOSGeometry destination = parse_wkt(wkt: "POINT (3 4)");
+if (origin.distance(destination) != 5.0 || !destination.equals(parse_wkb(make_wkb(destination)))) {
+    throw "PACKAGE-TEST-ERROR", "Geometry distance or WKB round trip failed";
+}
+if (DataProvider::getFactory("geoswktread").getInfo().name != "geoswktread") {
+    throw "PACKAGE-TEST-ERROR", "Installed provider factory is unavailable";
+}
+EOF
+/usr/bin/qcc -o geos-smoke geos-smoke.q
+./geos-smoke

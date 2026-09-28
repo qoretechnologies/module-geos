@@ -33,3 +33,15 @@ docs/*.dox
 
 # macOS
 .DS_Store
+
+# Debian package build products
+/obj-*/
+/debian/.debhelper/
+/debian/debhelper-build-stamp
+/debian/files
+/debian/*.substvars
+/debian/*.debhelper
+/debian/qore-geos-module/
+/debian/qore-geos-module-doc/
+/debian/tmp/
+**/__pycache__/

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.21)
 
 project(qore-geos-module)
 
@@ -9,11 +9,15 @@ set(VERSION_PATCH 0)
 # where to look first for cmake modules, before ${CMAKE_ROOT}/Modules/ is checked
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
+# Set this before loading Qore's macros so qdx and qjar use the same paths.
+# Preserve caller-supplied standard-library paths for QORE_MODULE_DIR_ONLY builds.
+set(QORE_MODULE_DIR_FOR_DOCS "${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/qlib-qmod:${CMAKE_SOURCE_DIR}/qlib")
+if(DEFINED ENV{QORE_MODULE_DIR} AND NOT "$ENV{QORE_MODULE_DIR}" STREQUAL "")
+    string(APPEND QORE_MODULE_DIR_FOR_DOCS ":$ENV{QORE_MODULE_DIR}")
+endif()
+
 find_package(Qore 0.9 REQUIRED)
 find_package(GEOS REQUIRED)
-
-# ensure qdx can find the geos binary module and user modules when processing .qc files
-set(QORE_MODULE_DIR_FOR_DOCS "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/qlib")
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${GEOS_INCLUDE_DIR})
