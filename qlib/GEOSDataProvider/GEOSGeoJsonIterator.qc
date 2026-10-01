@@ -26,7 +26,7 @@
 public namespace GEOSDataProvider {
 #! Iterator for GeoJSON geometry data read line by line
 /** Each line is expected to contain a single GeoJSON geometry object.
-    Lines are parsed using @ref parse_geojson() and the resulting geometry
+    Lines are parsed using @ref Qore::GEOS::parse_geojson() and the resulting geometry
     type is extracted.
 
 */
