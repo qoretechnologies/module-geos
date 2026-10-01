@@ -12,7 +12,7 @@
 %bcond_without docs
 Name: qore-geos-module
 Version: 1.0.0
-Release: 1%{?dist}
+Release: 2%{?dist}
 Summary: Geometry operations and spatial data providers for Qore
 License: MIT
 URL: https://github.com/qoretechnologies/module-geos
@@ -72,6 +72,7 @@ find %{buildroot}%{_libdir}/qore-modules -type f -name '*.qmod' -exec chmod 755 
 %if %{with docs}
 install -d %{buildroot}%{_docdir}/%{name}-doc
 cp -a build/docs %{buildroot}%{_docdir}/%{name}-doc/
+install -Dm644 build/geos.tag %{buildroot}%{_datadir}/qore/tags/geos.tag
 hardlink -t -O %{buildroot}%{_docdir}/%{name}-doc
 %endif
 %check
@@ -96,9 +97,15 @@ qore-data-provider-i18n --no-color --check-source-tree --require-standard-locale
 %{_datadir}/qore/i18n/
 %if %{with docs}
 %files doc
+%dir %{_datadir}/qore
+%dir %{_datadir}/qore/tags
+%{_datadir}/qore/tags/geos.tag
 %license COPYING.MIT
 %doc %{_docdir}/%{name}-doc/
 %endif
 %changelog
+* Thu Oct 01 2026 David Nichols <david@qore.org> - 1.0.0-2
+- Ship the GEOS reference index for documentation of dependent modules.
+
 * Thu Oct 01 2026 David Nichols <david@qore.org> - 1.0.0-1
 - Package geometry operations, spatial providers and tests with preserved AOT metadata.
