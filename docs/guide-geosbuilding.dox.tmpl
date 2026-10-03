@@ -1,0 +1,31 @@
+/* Copyright (C) 2026 Qore Technologies, s.r.o. */
+
+/** @page geosbuildingguide Building
+
+    @tableofcontents
+
+    The geos module requires the GEOS library with C API headers to build.
+
+    @section geosbuildreqs Build Requirements
+
+    |!Distribution|!Packages
+    |Ubuntu / Debian|\c libgeos-dev
+    |Fedora / RHEL|\c geos-devel
+    |Alpine|\c geos-dev
+
+    @section geosbuildsteps Build Steps
+
+    @code{.sh}
+    mkdir build
+    cd build
+    cmake ..
+    make
+    make install
+    make test
+    @endcode
+
+    If Qore or GEOS cannot be found automatically:
+    @code{.sh}
+    cmake .. -DQORE_DIR=/path/to/qore -DGEOS_DIR=/path/to/geos
+    @endcode
+*/

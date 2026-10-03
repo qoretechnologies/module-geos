@@ -61,6 +61,13 @@ SET(module_name "geos")
 
 set(QORE_DOX_TMPL_SRC
     docs/mainpage.doxygen.tmpl
+    docs/guide-geosbuilding.dox.tmpl
+    docs/guide-geosclasses.dox.tmpl
+    docs/guide-geosconstants.dox.tmpl
+    docs/guide-geosexamples.dox.tmpl
+    docs/guide-geosfunctions.dox.tmpl
+    docs/guide-geosreleasenotes.dox.tmpl
+    docs/guide-geostypes.dox.tmpl
 )
 
 add_library(${module_name} MODULE ${CPP_SRC} ${QPP_SOURCES})
@@ -73,6 +80,9 @@ if(DEFINED ENV{DOXYGEN_EXECUTABLE})
     set(DOXYGEN_EXECUTABLE $ENV{DOXYGEN_EXECUTABLE})
 endif()
 
+set(QORE_DOXYGEN_IMAGES
+    "${CMAKE_SOURCE_DIR}/qlib/GEOSDataProvider/geos-logo.svg"
+)
 qore_external_binary_module(${module_name} "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}" ${GEOS_LIBRARY})
 
 # install qpp metadata files
@@ -111,28 +121,5 @@ if(DOXYGEN_FOUND)
     add_custom_target(QORE_MOD_DOX_FILES DEPENDS ${QORE_DOX_SRC})
     add_dependencies(docs-module QORE_MOD_DOX_FILES)
 
-    # Two-phase doc build: the initial pass (docs-module) generates geos.tag with empty
-    # TAGFILES. User module docs (docs-GEOSDataProvider) are then built using geos.tag,
-    # generating their own tag file. The final pass (docs-module-final) rebuilds the binary
-    # module docs with user module tag files in TAGFILES, enabling @ref cross-references
-    # from the mainpage into user module symbols.
-
-    # Suppress unresolved cross-reference warnings in the initial pass
-    file(APPEND ${CMAKE_BINARY_DIR}/Doxyfile "\n# Suppress warnings for initial pass (no user module TAGFILES available)\nWARN_IF_DOC_ERROR = NO\n")
-
-    # Create final-pass Doxyfile from the binary module's Doxyfile with user module tag files
-    # (copy + append, NOT configure_file with user module template which has wrong INPUT)
-    file(COPY_FILE ${CMAKE_BINARY_DIR}/Doxyfile ${CMAKE_BINARY_DIR}/Doxyfile.final)
-    file(APPEND ${CMAKE_BINARY_DIR}/Doxyfile.final
-        "\n# Final pass: enable user module cross-references and re-enable doc error warnings\nTAGFILES += \"${CMAKE_BINARY_DIR}/GEOSDataProvider.tag=../../GEOSDataProvider/html\"\nWARN_IF_DOC_ERROR = YES\n")
-
-    add_custom_target(docs-module-final
-        COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile.final
-        COMMAND ${CMAKE_COMMAND} -E env ${QORE_DOCS_ENV} ${QORE_QDX_COMMAND} --post ${CMAKE_BINARY_DIR}/docs/${module_name}/html ${CMAKE_BINARY_DIR}/docs/${module_name}/html/search
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        COMMENT "Generating API documentation with Doxygen (final pass with user module cross-references)"
-        VERBATIM
-    )
-    add_dependencies(docs-module-final docs-GEOSDataProvider)
-    add_dependencies(docs docs-module-final)
+    qore_binary_module_two_phase_docs(${module_name} "GEOSDataProvider")
 endif()
