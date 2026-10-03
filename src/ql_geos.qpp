@@ -38,7 +38,7 @@
 /** Represents a single coordinate with X, Y, and optional Z components.
 
 */
-hashdecl GEOSCoordinate {
+hashdecl Qore::GEOS::GEOSCoordinate {
     //! X coordinate
     float x;
     //! Y coordinate
@@ -51,7 +51,7 @@ hashdecl GEOSCoordinate {
 /** Contains parsed version information for the GEOS library.
 
 */
-hashdecl GEOSVersionInfo {
+hashdecl Qore::GEOS::GEOSVersionInfo {
     //! Full version string (e.g., "3.12.0")
     string version;
     //! Major version number
@@ -66,7 +66,7 @@ hashdecl GEOSVersionInfo {
 /** Represents the axis-aligned bounding box of a geometry with minimum and maximum X/Y coordinates.
 
 */
-hashdecl GEOSExtent {
+hashdecl Qore::GEOS::GEOSExtent {
     //! Minimum X coordinate
     float xmin;
     //! Minimum Y coordinate

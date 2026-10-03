@@ -21,10 +21,12 @@
     The underlying geometry functionality is provided by <a href="https://libgeos.org">GEOS (libgeos)</a>.
 
     The module has two layers:
-    - <b>C++ binary module</b> (\c geos): GEOSGeometry, GEOSPreparedGeometry, GEOSSTRtree, and
-      WKT/WKB/GeoJSON reader/writer classes for in-memory geometry operations
+    - <b>C++ binary module</b> (\c geos): @ref Qore::GEOS::GEOSGeometry "GEOSGeometry",
+      @ref Qore::GEOS::GEOSPreparedGeometry "GEOSPreparedGeometry",
+      @ref Qore::GEOS::GEOSSTRtree "GEOSSTRtree", and
+      @ref geosclassesguide "WKT/WKB/GeoJSON reader/writer classes" for in-memory geometry operations
     - <b>@ref geosdataproviderintro "GEOSDataProvider"</b>: data provider integration for reading and
-      writing WKT/WKB/GeoJSON geometry files in data pipelines (load with \c %%requires \c GEOSDataProvider)
+      writing WKT/WKB/GeoJSON geometry files in data pipelines (load with \c %%requires @ref geosdataproviderintro "GEOSDataProvider")
 
     @section geosqlibmodules Qore User Modules
 
