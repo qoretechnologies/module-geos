@@ -45,6 +45,8 @@ module GEOSDataProvider {
 
     @section geosdataproviderintro Introduction to the GEOSDataProvider Module
 
+    <img src="geos-logo.svg" width="96" alt="GEOSDataProvider module logo"/>
+
     The %GEOSDataProvider module provides data provider support for reading and writing geometry data in WKT
     (Well-Known Text) and WKB (Well-Known Binary) formats using the GEOS library.
 
@@ -198,7 +200,7 @@ map printf("geometry: %s\n", $1.geometry), reader.searchRecords();
     @section geosdataprovider_relnotes Release Notes
 
     @subsection geosdataprovider_v1_0 GEOSDataProvider v1.0
-    - initial release of the module
+    - initial release
 */
 
 #! Contains all public definitions in the GEOSDataProvider module

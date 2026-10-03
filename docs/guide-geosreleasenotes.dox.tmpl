@@ -5,24 +5,5 @@
     @tableofcontents
 
     @section geos_1_0 geos Module Version 1.0
-
-    <b>New Features and Bug Fixes</b>
-    - Final documentation builds retain language and caller reference indexes
-    - Documentation builds preserve configured standard-library paths when using isolated module lookup
-    - CMake 3.21 or later is required for the documentation build setup
-    - Initial release
-    - Classes: GEOSGeometry, GEOSPreparedGeometry, GEOSSTRtree, GEOSWKTReader,
-      GEOSWKTWriter, GEOSWKBReader, GEOSWKBWriter, GEOSGeoJSONReader, GEOSGeoJSONWriter
-    - Standalone functions: geos_version(), get_geos_info(), parse_wkt(), make_wkt(),
-      parse_wkb(), make_wkb(), parse_geojson(), make_geojson(), geos_create_point(),
-      geos_create_linestring(), geos_create_polygon(), geos_create_collection(),
-      geos_create_empty_collection(), geos_create_rectangle(), geos_relate_pattern_match(),
-      geos_polygonize(), geos_cluster_dbscan(), geos_orientation_index(),
-      geos_segment_intersection()
-    - Hashdecls: GEOSCoordinate, GEOSVersionInfo, GEOSExtent
-    - Constants: geometry type IDs, MakeValid methods, buffer cap/join styles
-    - Thread-safe implementation using reentrant GEOS C API
-    - Cooperative cancellation support in STRtree queries and coordinate sequence construction
-    - @ref geosdataproviderintro "GEOSDataProvider" separated module with WKT, WKB, and GeoJSON
-      data providers for use in data pipelines
+    - initial release
 */
