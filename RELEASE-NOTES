@@ -1,2 +1,2 @@
-See the Qore geos module doxygen documentation for release notes:
-docs/mainpage.doxygen.tmpl (source) or the generated HTML documentation.
+See the geos module release notes in the generated Doxygen documentation.
+The authoritative source is docs/guide-geosreleasenotes.dox.tmpl.
