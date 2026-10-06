@@ -870,6 +870,9 @@ hash<auto> geos_cluster_dbscan(GEOSGeometry[QoreGEOSGeometry] geometry, float ep
     h->setKeyValue("assignments", assign_list.release(), xsink);
     return h.release();
 #else
+    // The public signature is stable when the installed GEOS lacks this API.
+    (void)eps;
+    (void)min_points;
     xsink->raiseException("GEOS-ERROR", "geos_cluster_dbscan() requires GEOS >= 3.14 (installed: " GEOS_VERSION ")");
     return QoreValue();
 #endif

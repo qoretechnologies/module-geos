@@ -437,6 +437,8 @@ bool GEOSPreparedGeometry::relatePattern(GEOSGeometry[QoreGEOSGeometry] other, s
     }
     return (bool)rv;
 #else
+    // The public signature is stable when the installed GEOS lacks this API.
+    (void)pattern;
     xsink->raiseException("GEOS-ERROR", "relatePattern() requires GEOS >= 3.14 (installed: " GEOS_VERSION ")");
     return QoreValue();
 #endif

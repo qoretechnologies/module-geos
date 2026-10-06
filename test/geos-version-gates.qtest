@@ -1,0 +1,78 @@
+#!/usr/bin/env qore
+# Copyright (C) 2026 Qore Technologies, s.r.o.
+%modern
+%enable-all-warnings
+%requires geos
+%requires QUnit
+%exec-class GEOSVersionGates
+
+class GEOSVersionGates inherits QUnit::Test {
+    private {
+        bool geos314;
+    }
+    constructor() : Test("GEOSVersionGates", "1.0") {
+        hash<GEOSVersionInfo> version = get_geos_info();
+        geos314 = version.major > 3 || (version.major == 3 && version.minor >= 14);
+        addTestCase("prepared geometry feature gate and recovery", \prepared());
+        addTestCase("DBSCAN feature gate and recovery", \clusters());
+        addTestCase("GeoJSON dimension feature gate and recovery", \dimension());
+        set_return_value(main());
+    }
+    prepared() {
+        GEOSGeometry polygon("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))");
+        GEOSGeometry inside("POINT (1 1)");
+        GEOSGeometry outside("POINT (20 20)");
+        GEOSPreparedGeometry value = polygon.prepare();
+        if (geos314) {
+            assertTrue(value.relatePattern(inside, "T*****FF*"));
+            assertFalse(value.relatePattern(outside, "T*****FF*"));
+            assertTrue(value.relatePattern(other: outside, pattern: "FF*FF****"));
+        } else {
+            foreach string pattern in ("T*****FF*", "FF*FF****", "") {
+                assertThrows("GEOS-ERROR", sub() { value.relatePattern(other: inside, pattern: pattern); });
+            }
+        }
+        assertTrue(value.contains(inside));
+        assertFalse(value.contains(outside));
+    }
+    clusters() {
+        GEOSGeometry points("MULTIPOINT ((0 0), (0.1 0.1), (10 10))");
+        if (geos314) {
+            hash<auto> result = geos_cluster_dbscan(geometry: points, eps: 1.0, min_points: 1);
+            assertEq(3, result.assignments.size());
+            assertEq(result.assignments[0], result.assignments[1]);
+            assertNeq(result.assignments[0], result.assignments[2]);
+        } else {
+            foreach float eps in (0.0, 1.0, -1.0) {
+                foreach int min_points in (0, 1, -1) {
+                    assertThrows("GEOS-ERROR", sub() {
+                        geos_cluster_dbscan(geometry: points, eps: eps, min_points: min_points);
+                    });
+                }
+            }
+        }
+        assertEq(3, points.numGeometries());
+        assertTrue(points.isValid());
+    }
+    dimension() {
+        GEOSGeoJSONWriter writer();
+        GEOSGeoJSONReader reader();
+        GEOSGeometry point("POINT Z (1 2 3)");
+        if (geos314) {
+            foreach int dim in (2, 3, 2) {
+                writer.setOutputDimension(dimension: dim);
+                assertEq(dim, writer.getOutputDimension());
+                GEOSGeometry decoded = reader.read(writer.write(point));
+                assertEq(dim == 3, decoded.hasZ());
+            }
+        } else {
+            foreach int dim in (-1, 0, 2, 3, 4) {
+                assertThrows("GEOS-ERROR", sub() { writer.setOutputDimension(dimension: dim); });
+            }
+            assertThrows("GEOS-ERROR", sub() { writer.getOutputDimension(); });
+        }
+        GEOSGeometry decoded = reader.read(writer.write(point));
+        assertFloatEq(1.0, decoded.getX());
+        assertFloatEq(2.0, decoded.getY());
+    }
+}
