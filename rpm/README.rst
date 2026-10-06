@@ -9,7 +9,7 @@ The default build includes module tests and a separate documentation package.
 Dependencies on the installed Qore ABI and SDK version are generated from the
 built module; do not replace them with an unversioned qore dependency.
 
-Prepare a pinned source bundle with qore-packaging, then build it in the geosget
+Prepare a pinned source bundle with qore-packaging, then build it in the target
 distribution with networking disabled::
 
     python3 tools/packaging.py prepare --repo ../module-geos --ref COMMIT \
@@ -27,3 +27,11 @@ distribution's normal ELF stripping and separate debug packages.
 
 The package includes native and AOT modules, source fallbacks and separate debug
 information. RPM post-processing preserves the AOT dependency trailers.
+
+Documentation builds require the ``qore-devel(module-doc-peers) = 1`` SDK
+capability, which resolves sibling-module references before final rendering.
+GEOSDataProvider keeps full DWARF, source and AOT metadata, but omits LLVM's
+optional name index because distribution GDB does not support it. Initial
+debugger loading can be slower. Package checks verify the separate debug link
+and retained dependency metadata; qualification verifies source lookup and
+breakpoints. Native GEOS module debug processing is unchanged.
