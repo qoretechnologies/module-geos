@@ -50,8 +50,14 @@ fi
 # own everything by the qore user
 chown -R qore:qore ${MODULE_SRC_DIR}
 
-# run the tests
+# run the tests: this checkout's user modules and this build's binary modules are first in the module path
+export QORE_MODULE_DIR=${MODULE_SRC_DIR}/qlib:${MODULE_SRC_DIR}/build:${QORE_MODULE_DIR}
 cd ${MODULE_SRC_DIR}
+# the tests must load the modules that this job built, not the copies that the image already has
+test/docker_test/check-loaded-modules.sh build gosu qore:qore
 for test in test/*.qtest; do
     gosu qore:qore qore --enable-debug $test -vv
 done
+
+# ... and they still do once the tests have run
+test/docker_test/check-loaded-modules.sh build gosu qore:qore
