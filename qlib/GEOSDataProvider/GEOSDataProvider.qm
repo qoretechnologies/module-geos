@@ -207,7 +207,7 @@ map printf("geometry: %s\n", $1.geometry), reader.searchRecords();
 
 /** @page geosdataproviderreleasenotes GEOSDataProvider Release Notes
 
-    @section geosdataproviderv10 GEOSDataProvider Module Version 1.0
+    @section geosdataprovider_v1_0 GEOSDataProvider Module Version 1.0
     - initial release
 */
 
