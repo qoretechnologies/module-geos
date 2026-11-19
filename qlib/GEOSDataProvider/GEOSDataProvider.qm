@@ -46,7 +46,7 @@ module GEOSDataProvider {
 
     @tableofcontents
 
-    @section geosdataproviderintro Introduction to the GEOSDataProvider Module
+    @section geosdataproviderintro GEOSDataProvider Module Introduction
 
     <img src="geos-logo.svg" width="96" alt="GEOSDataProvider module logo"/>
 
@@ -200,9 +200,14 @@ GEOSWktReadDataProvider reader({"data": wkt_output});
 map printf("geometry: %s\n", $1.geometry), reader.searchRecords();
     @endcode
 
-    @section geosdataprovider_relnotes Release Notes
+    @anchor geosdataprovider_relnotes
 
-    @subsection geosdataprovider_v1_0 GEOSDataProvider v1.0
+    @subpage geosdataproviderreleasenotes
+*/
+
+/** @page geosdataproviderreleasenotes GEOSDataProvider Release Notes
+
+    @section geosdataproviderv10 GEOSDataProvider Module Version 1.0
     - initial release
 */
 
